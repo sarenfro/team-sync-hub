@@ -13,6 +13,7 @@ export interface TeamMember {
 interface TeamMemberSelectProps {
   members: TeamMember[];
   onSelect: (member: TeamMember) => void;
+  onSelectAll: () => void;
 }
 
 const avatarColors = [
