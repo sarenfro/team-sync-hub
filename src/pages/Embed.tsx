@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import BookingHeader from "@/components/booking/BookingHeader";
 import TeamMemberSelect, {
   type TeamMember,
 } from "@/components/booking/TeamMemberSelect";
@@ -18,7 +17,7 @@ const ALL_TEAM_MEMBER: TeamMember = {
   colorIndex: 0,
 };
 
-const Index = () => {
+const Embed = () => {
   const [step, setStep] = useState<Step>("select-member");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -77,6 +76,18 @@ const Index = () => {
       const memberId =
         selectedMember?.id === "all" ? null : selectedMember?.id;
 
+      // Insert booking into database
+      await supabase.from("bookings").insert({
+        team_member_id: memberId,
+        booker_name: data.name,
+        booker_email: data.email,
+        notes: data.notes || null,
+        meeting_date: selectedDate!.toISOString().split("T")[0],
+        meeting_time: selectedTime!,
+        duration_minutes: 30,
+      });
+
+      // Call edge function to create calendar event
       await supabase.functions.invoke("create-booking", {
         body: {
           team_member_id: memberId,
@@ -106,63 +117,53 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 py-6">
-        <BookingHeader teamName="Book a Meeting" />
+    <div className="min-h-screen bg-background p-2 sm:p-4">
+      <div className="mx-auto max-w-4xl">
+        {step === "select-member" && (
+          <TeamMemberSelect
+            members={members}
+            onSelect={handleMemberSelect}
+            onSelectAll={handleSelectAll}
+          />
+        )}
 
-        <div className="mt-6">
-          {step === "select-member" && (
-            <TeamMemberSelect
-              members={members}
-              onSelect={handleMemberSelect}
-              onSelectAll={handleSelectAll}
-            />
-          )}
+        {step === "select-datetime" && selectedMember && (
+          <DateTimePicker
+            member={selectedMember}
+            onSelect={handleDateTimeSelect}
+            onBack={() => setStep("select-member")}
+          />
+        )}
 
-          {step === "select-datetime" && selectedMember && (
-            <DateTimePicker
+        {step === "enter-details" &&
+          selectedMember &&
+          selectedDate &&
+          selectedTime && (
+            <BookingForm
               member={selectedMember}
-              onSelect={handleDateTimeSelect}
-              onBack={() => setStep("select-member")}
+              date={selectedDate}
+              time={selectedTime}
+              onSubmit={handleFormSubmit}
+              onBack={() => setStep("select-datetime")}
+              isSubmitting={isSubmitting}
             />
           )}
 
-          {step === "enter-details" &&
-            selectedMember &&
-            selectedDate &&
-            selectedTime && (
-              <BookingForm
-                member={selectedMember}
-                date={selectedDate}
-                time={selectedTime}
-                onSubmit={handleFormSubmit}
-                onBack={() => setStep("select-datetime")}
-                isSubmitting={isSubmitting}
-              />
-            )}
-
-          {step === "confirmed" &&
-            selectedMember &&
-            selectedDate &&
-            selectedTime && (
-              <BookingConfirmation
-                member={selectedMember}
-                date={selectedDate}
-                time={selectedTime}
-                bookerName={bookerName}
-                onReset={handleReset}
-              />
-            )}
-        </div>
-
-        <div className="mt-12 text-center">
-          <p className="text-xs text-muted-foreground">
-            Powered by Team Scheduler
-          </p>
-        </div>
+        {step === "confirmed" &&
+          selectedMember &&
+          selectedDate &&
+          selectedTime && (
+            <BookingConfirmation
+              member={selectedMember}
+              date={selectedDate}
+              time={selectedTime}
+              bookerName={bookerName}
+              onReset={handleReset}
+            />
+          )}
       </div>
     </div>
   );
 };
 
-export default Index;
+export default Embed;
