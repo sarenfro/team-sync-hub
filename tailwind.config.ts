@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -56,6 +59,20 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        booking: {
+          hero: "hsl(var(--booking-hero))",
+          "hero-light": "hsl(var(--booking-hero-light))",
+          success: "hsl(var(--booking-success))",
+          "success-foreground": "hsl(var(--booking-success-foreground))",
+          surface: "hsl(var(--booking-surface))",
+          selected: "hsl(var(--booking-selected))",
+          "selected-foreground": "hsl(var(--booking-selected-foreground))",
+          hover: "hsl(var(--booking-hover))",
+          "avatar-1": "hsl(var(--booking-avatar-1))",
+          "avatar-2": "hsl(var(--booking-avatar-2))",
+          "avatar-3": "hsl(var(--booking-avatar-3))",
+          "avatar-4": "hsl(var(--booking-avatar-4))",
         },
       },
       borderRadius: {
