@@ -1,4 +1,5 @@
-import { Clock, Video } from "lucide-react";
+import { Clock, Video, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export interface TeamMember {
   id: string;
