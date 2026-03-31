@@ -40,6 +40,14 @@ const TEAM_MEMBERS: TeamMember[] = [
 
 type Step = "select-member" | "select-datetime" | "enter-details" | "confirmed";
 
+const ALL_TEAM_MEMBER: TeamMember = {
+  id: "all",
+  name: "Any Team Member",
+  role: "Next Available",
+  calendarType: "google",
+  colorIndex: 0,
+};
+
 const Index = () => {
   const [step, setStep] = useState<Step>("select-member");
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -50,6 +58,11 @@ const Index = () => {
 
   const handleMemberSelect = (member: TeamMember) => {
     setSelectedMember(member);
+    setStep("select-datetime");
+  };
+
+  const handleSelectAll = () => {
+    setSelectedMember(ALL_TEAM_MEMBER);
     setStep("select-datetime");
   };
 
@@ -90,6 +103,7 @@ const Index = () => {
             <TeamMemberSelect
               members={TEAM_MEMBERS}
               onSelect={handleMemberSelect}
+              onSelectAll={handleSelectAll}
             />
           )}
 

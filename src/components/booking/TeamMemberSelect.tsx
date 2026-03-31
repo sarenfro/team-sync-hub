@@ -1,4 +1,5 @@
-import { Clock, Video } from "lucide-react";
+import { Clock, Video, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export interface TeamMember {
   id: string;
@@ -12,6 +13,7 @@ export interface TeamMember {
 interface TeamMemberSelectProps {
   members: TeamMember[];
   onSelect: (member: TeamMember) => void;
+  onSelectAll: () => void;
 }
 
 const avatarColors = [
@@ -21,7 +23,7 @@ const avatarColors = [
   "bg-booking-avatar-4",
 ];
 
-const TeamMemberSelect = ({ members, onSelect }: TeamMemberSelectProps) => {
+const TeamMemberSelect = ({ members, onSelect, onSelectAll }: TeamMemberSelectProps) => {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
@@ -30,6 +32,32 @@ const TeamMemberSelect = ({ members, onSelect }: TeamMemberSelectProps) => {
           Choose a team member to schedule a meeting with
         </p>
       </div>
+
+      {/* Book with entire team button */}
+      <button
+        onClick={onSelectAll}
+        className="group relative flex w-full items-center gap-4 rounded-xl border-2 border-booking-hero bg-booking-hero-light p-5 transition-all hover:shadow-lg hover:shadow-booking-hero/10"
+      >
+        <div className="flex -space-x-3">
+          {members.map((member) => (
+            <div
+              key={member.id}
+              className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-primary-foreground ring-2 ring-background ${avatarColors[member.colorIndex % avatarColors.length]}`}
+            >
+              {member.name.split(" ").map((n) => n[0]).join("")}
+            </div>
+          ))}
+        </div>
+        <div className="text-left flex-1">
+          <h3 className="font-semibold text-foreground group-hover:text-booking-hero transition-colors">
+            Meet with Any Team Member
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Book the next available slot across all {members.length} members
+          </p>
+        </div>
+        <Users className="h-5 w-5 text-booking-hero" />
+      </button>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {members.map((member) => (
