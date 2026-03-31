@@ -104,6 +104,7 @@ const Index = () => {
     setSelectedDate(null);
     setSelectedTime(null);
     setBookerName("");
+    setBookerEmail("");
   };
 
   return (
