@@ -24,6 +24,7 @@ const Embed = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [bookerName, setBookerName] = useState("");
+  const [bookerEmail, setBookerEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -69,8 +70,8 @@ const Embed = () => {
     email: string;
     notes: string;
   }) => {
-    setIsSubmitting(true);
     setBookerName(data.name);
+    setBookerEmail(data.email);
 
     try {
       const memberId =
@@ -114,6 +115,7 @@ const Embed = () => {
     setSelectedDate(null);
     setSelectedTime(null);
     setBookerName("");
+    setBookerEmail("");
   };
 
   return (
@@ -158,6 +160,7 @@ const Embed = () => {
               date={selectedDate}
               time={selectedTime}
               bookerName={bookerName}
+              bookerEmail={bookerEmail}
               onReset={handleReset}
             />
           )}
