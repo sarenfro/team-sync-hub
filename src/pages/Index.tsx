@@ -71,8 +71,8 @@ const Index = () => {
     email: string;
     notes: string;
   }) => {
-    setIsSubmitting(true);
     setBookerName(data.name);
+    setBookerEmail(data.email);
 
     try {
       const memberId =
