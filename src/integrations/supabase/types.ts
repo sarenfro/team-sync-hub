@@ -14,7 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          booker_email: string
+          booker_name: string
+          calendar_event_id: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          meeting_date: string
+          meeting_time: string
+          notes: string | null
+          status: string
+          team_member_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          booker_email: string
+          booker_name: string
+          calendar_event_id?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_date: string
+          meeting_time: string
+          notes?: string | null
+          status?: string
+          team_member_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booker_email?: string
+          booker_name?: string
+          calendar_event_id?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_date?: string
+          meeting_time?: string
+          notes?: string | null
+          status?: string
+          team_member_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          calendar_id: string | null
+          calendar_type: string
+          color_index: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          calendar_id?: string | null
+          calendar_type: string
+          color_index?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calendar_id?: string | null
+          calendar_type?: string
+          color_index?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
