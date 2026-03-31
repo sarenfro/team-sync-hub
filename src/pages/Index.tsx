@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import BookingHeader from "@/components/booking/BookingHeader";
 import TeamMemberSelect, {
   type TeamMember,
@@ -6,37 +7,6 @@ import TeamMemberSelect, {
 import DateTimePicker from "@/components/booking/DateTimePicker";
 import BookingForm from "@/components/booking/BookingForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
-
-const TEAM_MEMBERS: TeamMember[] = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    role: "Team Lead",
-    calendarType: "google",
-    colorIndex: 0,
-  },
-  {
-    id: "2",
-    name: "Marcus Chen",
-    role: "Senior Developer",
-    calendarType: "outlook",
-    colorIndex: 1,
-  },
-  {
-    id: "3",
-    name: "Priya Patel",
-    role: "Product Manager",
-    calendarType: "outlook",
-    colorIndex: 2,
-  },
-  {
-    id: "4",
-    name: "Alex Rivera",
-    role: "Design Lead",
-    calendarType: "outlook",
-    colorIndex: 3,
-  },
-];
 
 type Step = "select-member" | "select-datetime" | "enter-details" | "confirmed";
 
@@ -50,11 +20,34 @@ const ALL_TEAM_MEMBER: TeamMember = {
 
 const Index = () => {
   const [step, setStep] = useState<Step>("select-member");
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [bookerName, setBookerName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      const { data } = await supabase
+        .from("team_members")
+        .select("*")
+        .eq("is_active", true)
+        .order("color_index");
+      if (data) {
+        setMembers(
+          data.map((m) => ({
+            id: m.id,
+            name: m.name,
+            role: m.role ?? "",
+            calendarType: m.calendar_type as "google" | "outlook",
+            colorIndex: m.color_index,
+          }))
+        );
+      }
+    };
+    fetchMembers();
+  }, []);
 
   const handleMemberSelect = (member: TeamMember) => {
     setSelectedMember(member);
@@ -79,10 +72,29 @@ const Index = () => {
   }) => {
     setIsSubmitting(true);
     setBookerName(data.name);
-    // Simulate API call — will be replaced with real calendar integration
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setStep("confirmed");
+
+    try {
+      const memberId =
+        selectedMember?.id === "all" ? null : selectedMember?.id;
+
+      await supabase.functions.invoke("create-booking", {
+        body: {
+          team_member_id: memberId,
+          booker_name: data.name,
+          booker_email: data.email,
+          notes: data.notes,
+          meeting_date: selectedDate!.toISOString().split("T")[0],
+          meeting_time: selectedTime!,
+          duration_minutes: 30,
+        },
+      });
+
+      setStep("confirmed");
+    } catch (err) {
+      console.error("Booking failed:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -101,7 +113,7 @@ const Index = () => {
         <div className="mt-6">
           {step === "select-member" && (
             <TeamMemberSelect
-              members={TEAM_MEMBERS}
+              members={members}
               onSelect={handleMemberSelect}
               onSelectAll={handleSelectAll}
             />
@@ -143,7 +155,6 @@ const Index = () => {
             )}
         </div>
 
-        {/* Powered by footer */}
         <div className="mt-12 text-center">
           <p className="text-xs text-muted-foreground">
             Powered by Team Scheduler
