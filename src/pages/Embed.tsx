@@ -115,6 +115,7 @@ const Embed = () => {
     setSelectedDate(null);
     setSelectedTime(null);
     setBookerName("");
+    setBookerEmail("");
   };
 
   return (
