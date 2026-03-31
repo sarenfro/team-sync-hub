@@ -160,6 +160,7 @@ const Embed = () => {
               date={selectedDate}
               time={selectedTime}
               bookerName={bookerName}
+              bookerEmail={bookerEmail}
               onReset={handleReset}
             />
           )}

@@ -152,6 +152,7 @@ const Index = () => {
                 date={selectedDate}
                 time={selectedTime}
                 bookerName={bookerName}
+                bookerEmail={bookerEmail}
                 onReset={handleReset}
               />
             )}
