@@ -103,6 +103,7 @@ const Index = () => {
             <TeamMemberSelect
               members={TEAM_MEMBERS}
               onSelect={handleMemberSelect}
+              onSelectAll={handleSelectAll}
             />
           )}
 
