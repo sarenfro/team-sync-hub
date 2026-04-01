@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   format,
   addMonths,
@@ -6,16 +6,15 @@ import {
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
-  isSameMonth,
   isSameDay,
   isToday,
   isBefore,
   startOfDay,
   getDay,
-  addDays,
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import type { TeamMember } from "./TeamMemberSelect";
 
 interface DateTimePickerProps {
@@ -24,42 +23,21 @@ interface DateTimePickerProps {
   onBack: () => void;
 }
 
-const AVAILABLE_TIMES = [
-  "9:00am",
-  "9:30am",
-  "10:00am",
-  "10:30am",
-  "11:00am",
-  "11:30am",
-  "1:00pm",
-  "1:30pm",
-  "2:00pm",
-  "2:30pm",
-  "3:00pm",
-  "3:30pm",
-  "4:00pm",
-  "4:30pm",
-];
-
 const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
 
   const calendarDays = useMemo(() => {
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start, end });
     const startDay = getDay(start);
-
-    // Add padding days from previous month
-    const paddingDays: (Date | null)[] = Array.from(
-      { length: startDay },
-      () => null
-    );
-
+    const paddingDays: (Date | null)[] = Array.from({ length: startDay }, () => null);
     return [...paddingDays, ...days];
   }, [currentMonth]);
 
@@ -67,6 +45,55 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
     const day = getDay(date);
     return day !== 0 && day !== 6 && !isBefore(date, startOfDay(new Date()));
   };
+
+  useEffect(() => {
+    if (!selectedDate) return;
+
+    const fetchAvailability = async () => {
+      setLoadingTimes(true);
+      setAvailableTimes([]);
+
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const memberId = member.id === "all" ? null : member.id;
+
+      try {
+        const params = new URLSearchParams({ date: dateStr });
+        if (memberId) params.set("member_id", memberId);
+
+        const { data, error } = await supabase.functions.invoke("get-availability", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          body: null,
+        });
+
+        // Use fetch directly since invoke doesn't support query params well
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-availability?${params.toString()}`,
+          {
+            headers: {
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+          }
+        );
+
+        if (res.ok) {
+          const json = await res.json();
+          setAvailableTimes(json.available_times ?? []);
+        } else {
+          console.error("Failed to fetch availability:", await res.text());
+          setAvailableTimes([]);
+        }
+      } catch (err) {
+        console.error("Availability fetch error:", err);
+        setAvailableTimes([]);
+      } finally {
+        setLoadingTimes(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [selectedDate, member.id]);
 
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time);
@@ -154,9 +181,7 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
           {/* Calendar grid */}
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map((day, index) => {
-              if (!day) {
-                return <div key={`empty-${index}`} />;
-              }
+              if (!day) return <div key={`empty-${index}`} />;
 
               const available = isDateAvailable(day);
               const selected = selectedDate && isSameDay(day, selectedDate);
@@ -165,7 +190,12 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
               return (
                 <button
                   key={day.toISOString()}
-                  onClick={() => available && setSelectedDate(day)}
+                  onClick={() => {
+                    if (available) {
+                      setSelectedDate(day);
+                      setSelectedTime(null);
+                    }
+                  }}
                   disabled={!available}
                   className={`
                     relative h-10 w-full rounded-full text-sm font-medium transition-all
@@ -196,19 +226,25 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
           <h4 className="text-sm font-semibold text-foreground">
             {format(selectedDate, "EEE, MMM d")}
           </h4>
-          <div className="space-y-2">
-            {AVAILABLE_TIMES.map((time) => (
-              <Button
-                key={time}
-                variant={selectedTime === time ? "booking-time-selected" : "booking-time"}
-                size="sm"
-                onClick={() => handleTimeSelect(time)}
-                className="text-sm"
-              >
-                {time}
-              </Button>
-            ))}
-          </div>
+          {loadingTimes ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : availableTimes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No available times.</p>
+          ) : (
+            <div className="space-y-2">
+              {availableTimes.map((time) => (
+                <Button
+                  key={time}
+                  variant={selectedTime === time ? "booking-time-selected" : "booking-time"}
+                  size="sm"
+                  onClick={() => handleTimeSelect(time)}
+                  className="text-sm"
+                >
+                  {time}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
