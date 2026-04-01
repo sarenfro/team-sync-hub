@@ -16,21 +16,14 @@ interface TeamMemberSelectProps {
   onSelectAll: () => void;
 }
 
-const avatarColors = [
-  "bg-booking-avatar-1",
-  "bg-booking-avatar-2",
-  "bg-booking-avatar-3",
-  "bg-booking-avatar-4",
-];
+const avatarColors = ["bg-booking-avatar-1", "bg-booking-avatar-2", "bg-booking-avatar-3", "bg-booking-avatar-4"];
 
 const TeamMemberSelect = ({ members, onSelect, onSelectAll }: TeamMemberSelectProps) => {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-foreground">Meet Our Team</h2>
-        <p className="text-muted-foreground">
-          Choose a team member to schedule a meeting with
-        </p>
+        <h2 className="text-2xl font-bold text-foreground">Meet Your MBAA EC</h2>
+        <p className="text-muted-foreground">Choose a team member to schedule a meeting with</p>
       </div>
 
       {/* Book with entire team button */}
@@ -44,7 +37,10 @@ const TeamMemberSelect = ({ members, onSelect, onSelectAll }: TeamMemberSelectPr
               key={member.id}
               className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-primary-foreground ring-2 ring-background ${avatarColors[member.colorIndex % avatarColors.length]}`}
             >
-              {member.name.split(" ").map((n) => n[0]).join("")}
+              {member.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")}
             </div>
           ))}
         </div>
