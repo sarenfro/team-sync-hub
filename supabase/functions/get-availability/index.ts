@@ -148,7 +148,13 @@ function parseIcalForDate(icalText: string, date: string): string[] {
     }
 
     if (dtstart.localDate === undefined) continue;
-    if (dtstart.localDate !== date) continue;
+
+    const hasRrule = /RRULE:/i.test(block);
+    const matchesDate = hasRrule
+      ? doesRecurOnDate(block, date, dtstart)
+      : dtstart.localDate === date;
+
+    if (!matchesDate) continue;
 
     const startMins = (dtstart.localHour ?? 0) * 60 + (dtstart.localMinute ?? 0);
     const endMins = dtend?.localDate
@@ -228,6 +234,91 @@ function toSeattleTime(dt: Date): { date: string; hour: number; minute: number }
   if (hour === 24) hour = 0;
 
   return { date: `${get("year")}-${get("month")}-${get("day")}`, hour, minute: parseInt(get("minute")) };
+}
+
+function doesRecurOnDate(block: string, date: string, dtstart: DtValue): boolean {
+  const rruleLine = block.match(/RRULE:([^\r\n]+)/)?.[1];
+  if (!rruleLine || !dtstart.localDate) return false;
+  if (date < dtstart.localDate) return false;
+
+  const parts: Record<string, string> = {};
+  for (const part of rruleLine.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq > 0) parts[part.substring(0, eq)] = part.substring(eq + 1);
+  }
+
+  const freq = parts["FREQ"];
+  const interval = parseInt(parts["INTERVAL"] || "1");
+  const byday = parts["BYDAY"] ? parts["BYDAY"].split(",") : [];
+
+  if (parts["UNTIL"]) {
+    const u = parts["UNTIL"];
+    let untilDate: string;
+    if (u.endsWith("Z")) {
+      const local = toSeattleTime(parseIcsDateTimeUtc(u));
+      untilDate = local.date;
+    } else {
+      untilDate = `${u.substring(0, 4)}-${u.substring(4, 6)}-${u.substring(6, 8)}`;
+    }
+    if (date > untilDate) return false;
+  }
+
+  const DAY_NAMES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+  const MS_PER_DAY = 86400000;
+  const targetDate = new Date(date + "T12:00:00Z");
+  const startDate = new Date(dtstart.localDate + "T12:00:00Z");
+  const targetDOW = targetDate.getUTCDay();
+
+  if (freq === "WEEKLY") {
+    if (!byday.includes(DAY_NAMES[targetDOW])) return false;
+    const startWeekMs = startDate.getTime() - startDate.getUTCDay() * MS_PER_DAY;
+    const targetWeekMs = targetDate.getTime() - targetDate.getUTCDay() * MS_PER_DAY;
+    const weeksDiff = Math.round((targetWeekMs - startWeekMs) / (7 * MS_PER_DAY));
+    return weeksDiff >= 0 && weeksDiff % interval === 0;
+  }
+
+  if (freq === "DAILY") {
+    const daysDiff = Math.round((targetDate.getTime() - startDate.getTime()) / MS_PER_DAY);
+    return daysDiff >= 0 && daysDiff % interval === 0;
+  }
+
+  if (freq === "MONTHLY") {
+    const monthsDiff =
+      (targetDate.getUTCFullYear() - startDate.getUTCFullYear()) * 12 +
+      (targetDate.getUTCMonth() - startDate.getUTCMonth());
+    if (monthsDiff < 0 || monthsDiff % interval !== 0) return false;
+
+    if (byday.length > 0) {
+      for (const byDayStr of byday) {
+        const m = byDayStr.match(/^(-?\d+)?(SU|MO|TU|WE|TH|FR|SA)$/);
+        if (!m) continue;
+        const n = m[1] ? parseInt(m[1]) : null;
+        const dayIndex = DAY_NAMES.indexOf(m[2]);
+        if (targetDOW !== dayIndex) continue;
+        if (n === null) return true;
+        const targetDay = targetDate.getUTCDate();
+        if (n > 0) return targetDay >= (n - 1) * 7 + 1 && targetDay <= n * 7;
+        const lastDay = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth() + 1, 0)).getUTCDate();
+        const daysFromEnd = lastDay - targetDay;
+        const absN = Math.abs(n);
+        return daysFromEnd >= (absN - 1) * 7 && daysFromEnd < absN * 7;
+      }
+      return false;
+    }
+
+    if (parts["BYMONTHDAY"]) {
+      return targetDate.getUTCDate() === parseInt(parts["BYMONTHDAY"]);
+    }
+  }
+
+  if (freq === "YEARLY") {
+    const yearsDiff = targetDate.getUTCFullYear() - startDate.getUTCFullYear();
+    return yearsDiff >= 0 && yearsDiff % interval === 0 &&
+      targetDate.getUTCMonth() === startDate.getUTCMonth() &&
+      targetDate.getUTCDate() === startDate.getUTCDate();
+  }
+
+  return false;
 }
 
 function dateInRange(date: string, startRaw: string, endRaw: string): boolean {
