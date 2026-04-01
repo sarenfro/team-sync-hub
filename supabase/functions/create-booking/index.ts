@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 interface BookingRequest {
-  team_member_id: string | null;
+  team_member_ids: string[];
   booker_name: string;
   booker_email: string;
   notes?: string;
@@ -35,95 +35,87 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get team member details if specific member selected
-    let memberName: string | null = null;
-    let memberEmail: string | null = null;
-    let calendarType: string | null = null;
-    let calendarId: string | null = null;
+    let memberIds: string[] = body.team_member_ids ?? [];
 
-    if (body.team_member_id) {
-      const { data: member } = await supabase
-        .from("team_members")
-        .select("calendar_type, calendar_id, name")
-        .eq("id", body.team_member_id)
-        .single();
-
-      if (member) {
-        memberName = member.name;
-        memberEmail = member.calendar_id;
-        calendarType = member.calendar_type;
-        calendarId = member.calendar_id;
-      }
-    } else {
-      // "Any team member" — pick first available
+    if (memberIds.length === 0) {
       const { data: members } = await supabase
         .from("team_members")
-        .select("id, calendar_type, calendar_id, name")
+        .select("id")
         .eq("is_active", true)
         .order("color_index")
         .limit(1);
-
       if (members && members.length > 0) {
-        body.team_member_id = members[0].id;
-        memberName = members[0].name;
-        memberEmail = members[0].calendar_id;
-        calendarType = members[0].calendar_type;
-        calendarId = members[0].calendar_id;
+        memberIds = [members[0].id];
       }
     }
 
-    let calendarEventId: string | null = null;
-
-    // Create calendar event based on calendar type
-    if (calendarId) {
-      if (calendarType === "google") {
-        calendarEventId = await createGoogleCalendarEvent(body, calendarId);
-      } else if (calendarType === "outlook") {
-        calendarEventId = await createOutlookCalendarEvent(body, calendarId);
-      }
+    if (memberIds.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No team members available" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Save booking to database
-    const { data: booking, error } = await supabase.from("bookings").insert({
-      team_member_id: body.team_member_id,
+    const { data: memberRows } = await supabase
+      .from("team_members")
+      .select("id, name, calendar_type, calendar_id")
+      .in("id", memberIds);
+
+    const members = memberRows ?? [];
+
+    const bookingInserts = members.map((m) => ({
+      team_member_id: m.id,
       booker_name: body.booker_name,
       booker_email: body.booker_email,
       notes: body.notes || null,
       meeting_date: body.meeting_date,
       meeting_time: body.meeting_time,
       duration_minutes: body.duration_minutes,
-      calendar_event_id: calendarEventId,
       status: "confirmed",
-    }).select().single();
+    }));
 
-    if (error) {
-      console.error("Database error:", error);
+    const { error: insertError } = await supabase.from("bookings").insert(bookingInserts);
+
+    if (insertError) {
+      console.error("Database error:", insertError);
       return new Response(
         JSON.stringify({ error: "Failed to save booking" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Send ICS email to team member
-    if (memberEmail) {
-      await sendIcsEmail({
-        toEmail: memberEmail,
-        toName: memberName ?? "Team Member",
-        bookerName: body.booker_name,
-        bookerEmail: body.booker_email,
-        meetingDate: body.meeting_date,
-        meetingTime: body.meeting_time,
-        durationMinutes: body.duration_minutes,
-        notes: body.notes,
-      });
+    // Send ICS email to each team member
+    for (const member of members) {
+      if (member.calendar_id) {
+        await sendIcsEmail({
+          toEmail: member.calendar_id,
+          toName: member.name,
+          bookerName: body.booker_name,
+          bookerEmail: body.booker_email,
+          meetingDate: body.meeting_date,
+          meetingTime: body.meeting_time,
+          durationMinutes: body.duration_minutes,
+          notes: body.notes,
+        });
+      }
     }
 
+    // Send confirmation email to the booker
+    const memberNames = members.map((m) => m.name.split(" ")[0]).join(" & ");
+    await sendIcsEmail({
+      toEmail: body.booker_email,
+      toName: body.booker_name,
+      bookerName: memberNames,
+      bookerEmail: "",
+      meetingDate: body.meeting_date,
+      meetingTime: body.meeting_time,
+      durationMinutes: body.duration_minutes,
+      notes: body.notes,
+      isBookerConfirmation: true,
+    });
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        booking_id: booking.id,
-        calendar_event_created: !!calendarEventId,
-      }),
+      JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
@@ -144,6 +136,7 @@ async function sendIcsEmail(params: {
   meetingTime: string;
   durationMinutes: number;
   notes?: string;
+  isBookerConfirmation?: boolean;
 }): Promise<void> {
   const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? Deno.env.get("resend_api_key");
   if (!resendApiKey) {
@@ -158,21 +151,39 @@ async function sendIcsEmail(params: {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
+  const subject = params.isBookerConfirmation
+    ? `Your meeting is confirmed — ${formattedDate} at ${params.meetingTime}`
+    : `New booking: ${params.bookerName} — ${formattedDate} at ${params.meetingTime}`;
+
+  const html = params.isBookerConfirmation
+    ? `
+      <h2>Hi ${params.toName},</h2>
+      <p>Your meeting has been confirmed!</p>
+      <div>
+        <p><strong>With:</strong> ${params.bookerName}</p>
+        <p><strong>When:</strong> ${formattedDate} at ${params.meetingTime}</p>
+        <p><strong>Duration:</strong> ${params.durationMinutes} minutes</p>
+        ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
+      </div>
+      <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
+    `
+    : `
+      <h2>Hi ${params.toName},</h2>
+      <p>You have a new meeting booking:</p>
+      <div>
+        <p><strong>Who:</strong> ${params.bookerName} (${params.bookerEmail})</p>
+        <p><strong>When:</strong> ${formattedDate} at ${params.meetingTime}</p>
+        <p><strong>Duration:</strong> ${params.durationMinutes} minutes</p>
+        ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
+      </div>
+      <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
+    `;
+
   const emailBody = {
     from: "Team Sync Hub <onboarding@resend.dev>",
     to: [params.toEmail],
-    subject: `New booking: ${params.bookerName} — ${formattedDate} at ${params.meetingTime}`,
-    html: `
-      <p>Hi ${params.toName},</p>
-      <p>You have a new meeting booking:</p>
-      <ul>
-        <li><strong>Who:</strong> ${params.bookerName} (${params.bookerEmail})</li>
-        <li><strong>When:</strong> ${formattedDate} at ${params.meetingTime}</li>
-        <li><strong>Duration:</strong> ${params.durationMinutes} minutes</li>
-        ${params.notes ? `<li><strong>Notes:</strong> ${params.notes}</li>` : ""}
-      </ul>
-      <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
-    `,
+    subject,
+    html,
     attachments: [
       {
         filename: `meeting-${params.meetingDate}.ics`,
@@ -254,109 +265,6 @@ function parseToUTC(dateStr: string, time12: string): Date {
 
 function formatICSDate(d: Date): string {
   return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-}
-
-async function createGoogleCalendarEvent(
-  booking: BookingRequest,
-  calendarId: string
-): Promise<string | null> {
-  const googleToken = Deno.env.get("GOOGLE_CALENDAR_ACCESS_TOKEN");
-  if (!googleToken) {
-    console.warn("Google Calendar access token not configured");
-    return null;
-  }
-
-  try {
-    const startDateTime = `${booking.meeting_date}T${convertTo24Hour(booking.meeting_time)}:00`;
-    const endDate = new Date(`${startDateTime}`);
-    endDate.setMinutes(endDate.getMinutes() + booking.duration_minutes);
-
-    const event = {
-      summary: `Meeting with ${booking.booker_name}`,
-      description: booking.notes || "",
-      start: { dateTime: startDateTime, timeZone: "UTC" },
-      end: { dateTime: endDate.toISOString().replace("Z", ""), timeZone: "UTC" },
-      attendees: [{ email: booking.booker_email }],
-      conferenceData: {
-        createRequest: {
-          requestId: crypto.randomUUID(),
-          conferenceSolutionKey: { type: "hangoutsMeet" },
-        },
-      },
-    };
-
-    const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${googleToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(event),
-      }
-    );
-
-    if (res.ok) {
-      const data = await res.json();
-      return data.id;
-    } else {
-      console.error("Google Calendar API error:", await res.text());
-      return null;
-    }
-  } catch (err) {
-    console.error("Google Calendar creation failed:", err);
-    return null;
-  }
-}
-
-async function createOutlookCalendarEvent(
-  booking: BookingRequest,
-  calendarId: string
-): Promise<string | null> {
-  const outlookToken = Deno.env.get("OUTLOOK_CALENDAR_ACCESS_TOKEN");
-  if (!outlookToken) {
-    console.warn("Outlook Calendar access token not configured");
-    return null;
-  }
-
-  try {
-    const startDateTime = `${booking.meeting_date}T${convertTo24Hour(booking.meeting_time)}:00`;
-    const endDate = new Date(`${startDateTime}`);
-    endDate.setMinutes(endDate.getMinutes() + booking.duration_minutes);
-
-    const event = {
-      subject: `Meeting with ${booking.booker_name}`,
-      body: { contentType: "Text", content: booking.notes || "" },
-      start: { dateTime: startDateTime, timeZone: "UTC" },
-      end: { dateTime: endDate.toISOString().replace("Z", ""), timeZone: "UTC" },
-      attendees: [
-        {
-          emailAddress: { address: booking.booker_email, name: booking.booker_name },
-          type: "required",
-        },
-      ],
-      isOnlineMeeting: true,
-      onlineMeetingProvider: "teamsForBusiness",
-    };
-
-    const res = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(calendarId)}/events`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${outlookToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(event),
-      }
-    );
-
-    if (res.ok) {
-      const data = await res.json();
-      return data.id;
-    } else {
-      console.error("Outlook Calendar API error:", await res.text());
-      return null;
-    }
-  } catch (err) {
-    console.error("Outlook Calendar creation failed:", err);
-    return null;
-  }
 }
 
 function convertTo24Hour(time12: string): string {
