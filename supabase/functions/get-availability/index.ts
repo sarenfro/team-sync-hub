@@ -1,15 +1,27 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const ALL_TIMES = [
-  "9:00am", "9:30am", "10:00am", "10:30am",
-  "11:00am", "11:30am", "12:00pm", "12:30pm",
-  "1:00pm", "1:30pm", "2:00pm", "2:30pm",
-  "3:00pm", "3:30pm", "4:00pm", "4:30pm",
+  "9:00am",
+  "9:30am",
+  "10:00am",
+  "10:30am",
+  "11:00am",
+  "11:30am",
+  "12:00pm",
+  "12:30pm",
+  "1:00pm",
+  "1:30pm",
+  "2:00pm",
+  "2:30pm",
+  "3:00pm",
+  "3:30pm",
+  "4:00pm",
+  "4:30pm",
 ];
 
 function icalSecretName(memberName: string): string {
@@ -28,16 +40,13 @@ Deno.serve(async (req) => {
     const date = url.searchParams.get("date");
 
     if (!date) {
-      return new Response(
-        JSON.stringify({ error: "date parameter required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "date parameter required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     let query = supabase
       .from("bookings")
@@ -55,11 +64,7 @@ Deno.serve(async (req) => {
     const icalBusyTimes: string[] = [];
 
     if (memberId && memberId !== "all") {
-      const { data: member } = await supabase
-        .from("team_members")
-        .select("name")
-        .eq("id", memberId)
-        .single();
+      const { data: member } = await supabase.from("team_members").select("name").eq("id", memberId).single();
 
       if (member) {
         const secretName = icalSecretName(member.name);
@@ -70,10 +75,7 @@ Deno.serve(async (req) => {
         }
       }
     } else {
-      const { data: members } = await supabase
-        .from("team_members")
-        .select("name")
-        .eq("is_active", true);
+      const { data: members } = await supabase.from("team_members").select("name").eq("is_active", true);
 
       if (members) {
         const memberBusySets: Set<string>[] = [];
@@ -97,16 +99,16 @@ Deno.serve(async (req) => {
     const busySet = new Set([...bookedTimes, ...icalBusyTimes]);
     const availableTimes = ALL_TIMES.filter((t) => !busySet.has(t));
 
-    return new Response(
-      JSON.stringify({ available_times: availableTimes, date }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ available_times: availableTimes, date }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("Error:", err);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
 
@@ -150,9 +152,7 @@ function parseIcalForDate(icalText: string, date: string): string[] {
     if (dtstart.localDate !== date) continue;
 
     const startMins = (dtstart.localHour ?? 0) * 60 + (dtstart.localMinute ?? 0);
-    const endMins = dtend?.localDate
-      ? (dtend.localHour ?? 0) * 60 + (dtend.localMinute ?? 0)
-      : startMins + 30;
+    const endMins = dtend?.localDate ? (dtend.localHour ?? 0) * 60 + (dtend.localMinute ?? 0) : startMins + 30;
 
     for (const slot of ALL_TIMES) {
       const slotMins = slotToMinutes(slot);
