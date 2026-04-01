@@ -388,7 +388,7 @@ function parseIcalForDate(icalText: string, date: string): string[] {
                                                                               
     for (const slot of ALL_TIMES) {                                           
       const slotMins = slotToMinutes(slot);                                   
-      if (slotMins >= startMins && slotMins < endMins) {                      
+      if (slotMins < endMins && slotMins + 30 > startMins){                      
         busy.push(slot);                                                      
       }                                                                       
     }                                                                         
