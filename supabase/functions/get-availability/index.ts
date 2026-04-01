@@ -79,12 +79,14 @@ Deno.serve(async (req) => {
 
       if (members) {
         const memberBusySets: Set<string>[] = [];
-        for (const member of members) {
-          const secretName = icalSecretName(member.name);
-          const icalUrl = Deno.env.get(secretName);
+        for (const member of membersToCheck) {
+          const envKey = icalEnvKey(member.name);
+          const icalUrl = Deno.env.get(envKey);
+          console.log(`[debug] member="${member.name}" envKey="${envKey}" urlFound=${!!icalUrl}`);
           if (icalUrl) {
             const busy = await getIcalBusyTimes(icalUrl, date);
-            memberBusySets.push(new Set(busy));
+            console.log(`[debug] busy slots for ${member.name}:`, busy);
+            busySetsPerMember.push(new Set(busy));
           }
         }
         if (memberBusySets.length > 0) {
