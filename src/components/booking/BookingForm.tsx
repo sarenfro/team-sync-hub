@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember } from "./TeamMemberSelect";
 
 interface BookingFormProps {
-  member: TeamMember;
+  members: TeamMember[];
   date: Date;
   time: string;
   onSubmit: (data: { name: string; email: string; notes: string }) => void;
@@ -15,14 +15,14 @@ interface BookingFormProps {
   isSubmitting: boolean;
 }
 
-const BookingForm = ({
-  member,
-  date,
-  time,
-  onSubmit,
-  onBack,
-  isSubmitting,
-}: BookingFormProps) => {
+function formatMemberNames(members: TeamMember[]): string {
+  if (members.length === 0) return "";
+  if (members.length === 1) return members[0].name;
+  const firsts = members.map((m) => m.name.split(" ")[0]);
+  return firsts.slice(0, -1).join(", ") + " & " + firsts[firsts.length - 1];
+}
+
+const BookingForm = ({ members, date, time, onSubmit, onBack, isSubmitting }: BookingFormProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
@@ -32,8 +32,13 @@ const BookingForm = ({
     onSubmit({ name, email, notes });
   };
 
+  const memberLabel = formatMemberNames(members);
+
   return (
-    <div className="flex flex-col lg:flex-row gap-0 rounded-xl border border-border bg-card overflow-hidden max-w-3xl mx-auto">
+    <div
+      className="flex flex-col lg:flex-row gap-0 rounded-xl border border-border bg-card overflow-hidden max-w-3xl
+  mx-auto"
+    >
       {/* Left panel - Summary */}
       <div className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-border p-6 space-y-4">
         <button
@@ -44,7 +49,7 @@ const BookingForm = ({
         </button>
 
         <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{member.name}</p>
+          <p className="text-sm text-muted-foreground">{memberLabel}</p>
           <h2 className="text-xl font-bold text-foreground">30 Minute Meeting</h2>
         </div>
 
@@ -59,7 +64,7 @@ const BookingForm = ({
           </div>
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 flex-shrink-0 text-booking-hero" />
-            <span>{member.name}</span>
+            <span>{memberLabel}</span>
           </div>
         </div>
       </div>
@@ -70,9 +75,7 @@ const BookingForm = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Name *
-            </label>
+            <label className="text-sm font-medium text-foreground">Name *</label>
             <Input
               required
               value={name}
@@ -83,9 +86,7 @@ const BookingForm = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Email *
-            </label>
+            <label className="text-sm font-medium text-foreground">Email *</label>
             <Input
               required
               type="email"
@@ -97,9 +98,7 @@ const BookingForm = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Additional Notes
-            </label>
+            <label className="text-sm font-medium text-foreground">Additional Notes</label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -108,13 +107,7 @@ const BookingForm = ({
             />
           </div>
 
-          <Button
-            type="submit"
-            variant="booking"
-            size="lg"
-            disabled={isSubmitting}
-            className="w-full"
-          >
+          <Button type="submit" variant="booking" size="lg" disabled={isSubmitting} className="w-full">
             {isSubmitting ? "Scheduling..." : "Schedule Event"}
           </Button>
         </form>
