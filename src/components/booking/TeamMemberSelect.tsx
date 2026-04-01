@@ -18,7 +18,7 @@ interface TeamMemberSelectProps {
 
 const avatarColors = ["bg-booking-avatar-1", "bg-booking-avatar-2", "bg-booking-avatar-3", "bg-booking-avatar-4"];
 
-const TeamMemberSelect = ({ members, selectedIds, onToggle, onSelectAll, onConfirm }: TeamMemberSelectProps) => {
+const TeamMemberSelect = ({ members, onSelect, onSelectAll }: TeamMemberSelectProps) => {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
