@@ -140,7 +140,7 @@ async function sendIcsEmail(params: {
 }): Promise<void> {
   const brevoApiKey = Deno.env.get("BREVO_API_KEY");
   if (!brevoApiKey) {
-    console.warn("BREVO_API_KEY not configured — skipping ICS email");
+    console.warn("BREVO_API_KEY not configured — skipping email");
     return;
   }
 
@@ -155,7 +155,7 @@ async function sendIcsEmail(params: {
     ? `Your meeting is confirmed — ${formattedDate} at ${params.meetingTime}`
     : `New booking: ${params.bookerName} — ${formattedDate} at ${params.meetingTime}`;
 
-  const htmlContent = params.isBookerConfirmation
+  const html = params.isBookerConfirmation
     ? `
       <h2>Hi ${params.toName},</h2>
       <p>Your meeting has been confirmed!</p>
@@ -183,7 +183,7 @@ async function sendIcsEmail(params: {
     sender: { name: "MBAA EC", email: "mbaa@uw.edu" },
     to: [{ email: params.toEmail, name: params.toName }],
     subject,
-    htmlContent,
+    htmlContent: html,
     attachment: [
       {
         name: `meeting-${params.meetingDate}.ics`,
@@ -229,7 +229,7 @@ function generateIcs(params: {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Team Sync Hub//EN",
+    "PRODID:-//MBAA EC//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:REQUEST",
     "BEGIN:VEVENT",
@@ -239,7 +239,7 @@ function generateIcs(params: {
     `DTEND:${end}`,
     `SUMMARY:Meeting with ${params.bookerName}`,
     `DESCRIPTION:${description}`,
-    `ORGANIZER;CN=Team Sync Hub:mailto:onboarding@resend.dev`,
+    `ORGANIZER;CN=MBAA EC:mailto:mbaa@uw.edu`,
     `ATTENDEE;CN=${params.toName};RSVP=TRUE:mailto:${params.toEmail}`,
     `ATTENDEE;CN=${params.bookerName};RSVP=TRUE:mailto:${params.bookerEmail}`,
     "STATUS:CONFIRMED",
@@ -265,18 +265,4 @@ function parseToUTC(dateStr: string, time12: string): Date {
 
 function formatICSDate(d: Date): string {
   return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-}
-
-function convertTo24Hour(time12: string): string {
-  const match = time12.match(/^(\d{1,2}):(\d{2})(am|pm)$/i);
-  if (!match) return "09:00";
-
-  let hours = parseInt(match[1], 10);
-  const minutes = match[2];
-  const period = match[3].toLowerCase();
-
-  if (period === "pm" && hours !== 12) hours += 12;
-  if (period === "am" && hours === 12) hours = 0;
-
-  return `${hours.toString().padStart(2, "0")}:${minutes}`;
 }
