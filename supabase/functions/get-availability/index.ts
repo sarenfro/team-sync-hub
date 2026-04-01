@@ -160,18 +160,15 @@ function parseIcalForDate(icalText: string, date: string): string[] {
       continue;
     }
 
-    // Timed event — convert to local (Pacific) time
-    if (!dtstart.dateTime) continue;
-
-    const startLocal = toSeattleTime(dtstart.dateTime);
-    const endLocal = dtend?.dateTime ? toSeattleTime(dtend.dateTime) : null;
+    // Timed event
+    if (dtstart.localDate === undefined) continue;
 
     // Check if event falls on the requested date
-    if (startLocal.date !== date) continue;
+    if (dtstart.localDate !== date) continue;
 
-    const startMins = startLocal.hour * 60 + startLocal.minute;
-    const endMins = endLocal
-      ? endLocal.hour * 60 + endLocal.minute
+    const startMins = (dtstart.localHour ?? 0) * 60 + (dtstart.localMinute ?? 0);
+    const endMins = dtend?.localDate
+      ? (dtend.localHour ?? 0) * 60 + (dtend.localMinute ?? 0)
       : startMins + 30;
 
     for (const slot of ALL_TIMES) {
@@ -187,12 +184,13 @@ function parseIcalForDate(icalText: string, date: string): string[] {
 
 interface DtValue {
   isDate: boolean;
-  rawDate: string;       // YYYYMMDD
-  dateTime?: Date;
+  rawDate: string;    // YYYYMMDD
+  localDate?: string; // YYYY-MM-DD
+  localHour?: number;
+  localMinute?: number;
 }
 
 function extractDtLine(block: string, key: string): DtValue | null {
-  // Match DTSTART, DTSTART;VALUE=DATE, DTSTART;TZID=...
   const regex = new RegExp(`${key}(?:;[^:]*)?:([^\r\n]+)`);
   const match = block.match(regex);
   if (!match) return null;
@@ -205,28 +203,31 @@ function extractDtLine(block: string, key: string): DtValue | null {
     return { isDate: true, rawDate: value };
   }
 
-  // Parse datetime
-  try {
-    // Format: YYYYMMDDTHHMMSSZ or YYYYMMDDTHHMMSS
-    const dt = parseIcsDateTime(value);
-    const rawDate = value.substring(0, 8);
-    return { isDate: false, rawDate, dateTime: dt };
-  } catch {
-    return null;
+  const rawDate = value.substring(0, 8);
+  const isUtc = value.endsWith("Z");
+
+  if (isUtc) {
+    // UTC time — convert to Seattle/Pacific local time
+    const dt = parseIcsDateTimeUtc(value);
+    const local = toSeattleTime(dt);
+    return { isDate: false, rawDate, localDate: local.date, localHour: local.hour, localMinute: local.minute };
+  } else {
+    // TZID time — the components are already in local time, read directly
+    const h = parseInt(value.substring(9, 11));
+    const mi = parseInt(value.substring(11, 13));
+    const localDate = `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`;
+    return { isDate: false, rawDate, localDate, localHour: h, localMinute: mi };
   }
 }
 
-function parseIcsDateTime(value: string): Date {
-  // YYYYMMDDTHHMMSSZ or YYYYMMDDTHHMMSS
+function parseIcsDateTimeUtc(value: string): Date {
   const y = value.substring(0, 4);
   const mo = value.substring(4, 6);
   const d = value.substring(6, 8);
   const h = value.substring(9, 11);
   const mi = value.substring(11, 13);
   const s = value.substring(13, 15) || "00";
-  const isUtc = value.endsWith("Z");
-
-  return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${isUtc ? "Z" : "-08:00"}`);
+  return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`);
 }
 
 function toSeattleTime(dt: Date): { date: string; hour: number; minute: number } {
@@ -248,19 +249,12 @@ function toSeattleTime(dt: Date): { date: string; hour: number; minute: number }
   const day = get("day");
   let hour = parseInt(get("hour"));
   const minute = parseInt(get("minute"));
-
-  // Intl returns 24 for midnight in some environments
   if (hour === 24) hour = 0;
 
-  return {
-    date: `${year}-${month}-${day}`,
-    hour,
-    minute,
-  };
+  return { date: `${year}-${month}-${day}`, hour, minute };
 }
 
 function dateInRange(date: string, startRaw: string, endRaw: string): boolean {
-  // All-day events: end date is exclusive in iCal
   const target = date.replace(/-/g, "");
   return target >= startRaw && target < endRaw;
 }
