@@ -14,17 +14,27 @@ import {
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import type { TeamMember } from "./TeamMemberSelect";
 
 interface DateTimePickerProps {
-  member: TeamMember;
+  members: TeamMember[];
   onSelect: (date: Date, time: string) => void;
   onBack: () => void;
 }
 
 const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
+const avatarColors = ["bg-booking-avatar-1", "bg-booking-avatar-2", "bg-booking-avatar-3", "bg-booking-avatar-4"];
+
+function formatMemberNames(members: TeamMember[]): string {
+  if (members.length === 0) return "";
+  if (members.length === 1) return members[0].name;
+  const firsts = members.map((m) => m.name.split(" ")[0]);
+  return firsts.slice(0, -1).join(", ") + " & " + firsts[firsts.length - 1];
+}
+
+const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -53,11 +63,10 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
       setAvailableTimes([]);
 
       const dateStr = format(selectedDate, "yyyy-MM-dd");
-      const memberId = member.id === "all" ? null : member.id;
+      const memberIds = members.map((m) => m.id).join(",");
 
       try {
-        const params = new URLSearchParams({ date: dateStr });
-        if (memberId) params.set("member_id", memberId);
+        const params = new URLSearchParams({ date: dateStr, member_ids: memberIds });
 
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-availability?${params.toString()}`,
@@ -85,7 +94,7 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
     };
 
     fetchAvailability();
-  }, [selectedDate, member.id]);
+  }, [selectedDate, members]);
 
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time);
@@ -95,9 +104,11 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
   };
 
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const memberLabel = formatMemberNames(members);
 
   return (
     <div className="flex flex-col lg:flex-row gap-0 rounded-xl border border-border bg-card overflow-hidden">
+      {/* Left panel - Member info */}
       <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-border p-6 space-y-4">
         <button
           onClick={onBack}
@@ -106,10 +117,31 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
           <ChevronLeft className="h-4 w-4" /> Back
         </button>
 
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{member.name}</p>
-          <h2 className="text-xl font-bold text-foreground">30 Minute Meeting</h2>
-        </div>
+        {members.length > 1 ? (
+          <div className="space-y-2">
+            <div className="flex -space-x-2">
+              {members.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold 
+  text-primary-foreground ring-2 ring-background ${avatarColors[m.colorIndex % avatarColors.length]}`}
+                >
+                  {m.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">{memberLabel}</p>
+            <h2 className="text-xl font-bold text-foreground">30 Minute Meeting</h2>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{memberLabel}</p>
+            <h2 className="text-xl font-bold text-foreground">30 Minute Meeting</h2>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center justify-center h-5 w-5 rounded bg-muted">🕐</span>
@@ -127,6 +159,7 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
         </div>
       </div>
 
+      {/* Center panel - Calendar */}
       <div className="flex-1 p-6 border-b lg:border-b-0">
         <div className="space-y-4">
           <h3 className="font-semibold text-foreground">Select a Date & Time</h3>
@@ -198,6 +231,7 @@ const DateTimePicker = ({ member, onSelect, onBack }: DateTimePickerProps) => {
         </div>
       </div>
 
+      {/* Right panel - Time slots */}
       {selectedDate && (
         <div className="w-full lg:w-48 p-6 space-y-3 max-h-[400px] overflow-y-auto">
           <h4 className="text-sm font-semibold text-foreground">{format(selectedDate, "EEE, MMM d")}</h4>
