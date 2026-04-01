@@ -12,9 +12,8 @@ const ALL_TIMES = [
   "3:00pm", "3:30pm", "4:00pm", "4:30pm",
 ];
 
-function icalSecretName(memberName: string): string {
-  const firstName = memberName.split(" ")[0].toUpperCase();
-  return `ICAL_${firstName}`;
+function icalEnvKey(memberName: string): string {
+  return `ICAL_${memberName.split(" ")[0].toUpperCase()}`;
 }
 
 Deno.serve(async (req) => {
@@ -24,8 +23,12 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const memberId = url.searchParams.get("member_id");
     const date = url.searchParams.get("date");
+
+    const memberIdsParam = url.searchParams.get("member_ids") ?? url.searchParams.get("member_id");
+    const memberIds = memberIdsParam
+      ? memberIdsParam.split(",").map((id) => id.trim()).filter(Boolean)
+      : [];
 
     if (!date) {
       return new Response(
@@ -39,66 +42,64 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    let query = supabase
+    let bookingQuery = supabase
       .from("bookings")
       .select("meeting_time, team_member_id")
       .eq("meeting_date", date)
       .eq("status", "confirmed");
 
-    if (memberId && memberId !== "all") {
-      query = query.eq("team_member_id", memberId);
+    if (memberIds.length === 1) {
+      bookingQuery = bookingQuery.eq("team_member_id", memberIds[0]);
+    } else if (memberIds.length > 1) {
+      bookingQuery = bookingQuery.in("team_member_id", memberIds);
     }
 
-    const { data: existingBookings } = await query;
+    const { data: existingBookings } = await bookingQuery;
     const bookedTimes = new Set((existingBookings || []).map((b) => b.meeting_time));
 
-    const icalBusyTimes: string[] = [];
+    let membersToCheck: { name: string }[] = [];
 
-    if (memberId && memberId !== "all") {
-      const { data: member } = await supabase
+    if (memberIds.length > 0) {
+      const { data } = await supabase
         .from("team_members")
         .select("name")
-        .eq("id", memberId)
-        .single();
-
-      if (member) {
-        const secretName = icalSecretName(member.name);
-        const icalUrl = Deno.env.get(secretName);
-        if (icalUrl) {
-          const busy = await getIcalBusyTimes(icalUrl, date);
-          icalBusyTimes.push(...busy);
-        }
-      }
+        .in("id", memberIds);
+      membersToCheck = data ?? [];
     } else {
-      const { data: members } = await supabase
+      const { data } = await supabase
         .from("team_members")
         .select("name")
         .eq("is_active", true);
+      membersToCheck = data ?? [];
+    }
 
-      if (members) {
-        const memberBusySets: Set<string>[] = [];
-        for (const member of members) {
-          const secretName = icalSecretName(member.name);
-          const icalUrl = Deno.env.get(secretName);
-          if (icalUrl) {
-            const busy = await getIcalBusyTimes(icalUrl, date);
-            memberBusySets.push(new Set(busy));
-          }
-        }
-        if (memberBusySets.length > 0) {
-          for (const slot of ALL_TIMES) {
-            const allBusy = memberBusySets.every((s) => s.has(slot));
-            if (allBusy) icalBusyTimes.push(slot);
-          }
-        }
+    const busySetsPerMember: Set<string>[] = [];
+    const debugInfo: Record<string, unknown>[] = [];
+
+    for (const member of membersToCheck) {
+      const envKey = icalEnvKey(member.name);
+      const icalUrl = Deno.env.get(envKey);
+      const entry: Record<string, unknown> = { member: member.name, envKey, urlFound: !!icalUrl };
+      if (icalUrl) {
+        const busy = await getIcalBusyTimes(icalUrl, date);
+        entry.busySlots = busy;
+        busySetsPerMember.push(new Set(busy));
+      }
+      debugInfo.push(entry);
+    }
+
+    const icalBusyTimes = new Set<string>();
+    for (const busySet of busySetsPerMember) {
+      for (const slot of busySet) {
+        icalBusyTimes.add(slot);
       }
     }
 
-    const busySet = new Set([...bookedTimes, ...icalBusyTimes]);
-    const availableTimes = ALL_TIMES.filter((t) => !busySet.has(t));
+    const allBusy = new Set([...bookedTimes, ...icalBusyTimes]);
+    const availableTimes = ALL_TIMES.filter((t) => !allBusy.has(t));
 
     return new Response(
-      JSON.stringify({ available_times: availableTimes, date }),
+      JSON.stringify({ available_times: availableTimes, date, debug: debugInfo }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
@@ -226,11 +227,7 @@ function toSeattleTime(dt: Date): { date: string; hour: number; minute: number }
   let hour = parseInt(get("hour"));
   if (hour === 24) hour = 0;
 
-  return {
-    date: `${get("year")}-${get("month")}-${get("day")}`,
-    hour,
-    minute: parseInt(get("minute")),
-  };
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour, minute: parseInt(get("minute")) };
 }
 
 function dateInRange(date: string, startRaw: string, endRaw: string): boolean {
