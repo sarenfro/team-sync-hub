@@ -138,9 +138,9 @@ async function sendIcsEmail(params: {
   notes?: string;
   isBookerConfirmation?: boolean;
 }): Promise<void> {
-  const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? Deno.env.get("resend_api_key");
-  if (!resendApiKey) {
-    console.warn("RESEND_API_KEY not configured — skipping ICS email");
+  const brevoApiKey = Deno.env.get("BREVO_API_KEY");
+  if (!brevoApiKey) {
+    console.warn("BREVO_API_KEY not configured — skipping ICS email");
     return;
   }
 
@@ -155,7 +155,7 @@ async function sendIcsEmail(params: {
     ? `Your meeting is confirmed — ${formattedDate} at ${params.meetingTime}`
     : `New booking: ${params.bookerName} — ${formattedDate} at ${params.meetingTime}`;
 
-  const html = params.isBookerConfirmation
+  const htmlContent = params.isBookerConfirmation
     ? `
       <h2>Hi ${params.toName},</h2>
       <p>Your meeting has been confirmed!</p>
@@ -180,22 +180,22 @@ async function sendIcsEmail(params: {
     `;
 
   const emailBody = {
-    from: "Team Sync Hub <onboarding@resend.dev>",
-    to: [params.toEmail],
+    sender: { name: "MBAA EC", email: "mbaa@uw.edu" },
+    to: [{ email: params.toEmail, name: params.toName }],
     subject,
-    html,
-    attachments: [
+    htmlContent,
+    attachment: [
       {
-        filename: `meeting-${params.meetingDate}.ics`,
+        name: `meeting-${params.meetingDate}.ics`,
         content: icsBase64,
       },
     ],
   };
 
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${resendApiKey}`,
+      "api-key": brevoApiKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(emailBody),
@@ -203,7 +203,7 @@ async function sendIcsEmail(params: {
 
   if (!res.ok) {
     const errText = await res.text();
-    console.error("Resend API error:", errText);
+    console.error("Brevo API error:", errText);
   }
 }
 
