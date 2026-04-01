@@ -12,10 +12,8 @@ export interface TeamMember {
 
 interface TeamMemberSelectProps {
   members: TeamMember[];
-  selectedIds: string[];
-  onToggle: (member: TeamMember) => void;
+  onSelect: (member: TeamMember) => void;
   onSelectAll: () => void;
-  onConfirm: () => void;
 }
 
 const avatarColors = ["bg-booking-avatar-1", "bg-booking-avatar-2", "bg-booking-avatar-3", "bg-booking-avatar-4"];
