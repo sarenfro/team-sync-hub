@@ -5,6 +5,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const ALL_TIMES = [
+  "9:00am", "9:30am", "10:00am", "10:30am",
+  "11:00am", "11:30am", "12:00pm", "12:30pm",
+  "1:00pm", "1:30pm", "2:00pm", "2:30pm",
+  "3:00pm", "3:30pm", "4:00pm", "4:30pm",
+];
+
+// Derive secret name from first name, e.g. "Sarrah Renfro" -> "ICAL_SARRAH"
+function icalSecretName(memberName: string): string {
+  const firstName = memberName.split(" ")[0].toUpperCase();
+  return `ICAL_${firstName}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -39,37 +52,57 @@ Deno.serve(async (req) => {
     }
 
     const { data: existingBookings } = await query;
+    const bookedTimes = new Set((existingBookings || []).map((b) => b.meeting_time));
 
-    const ALL_TIMES = [
-      "9:00am", "9:30am", "10:00am", "10:30am",
-      "11:00am", "11:30am", "1:00pm", "1:30pm",
-      "2:00pm", "2:30pm", "3:00pm", "3:30pm",
-      "4:00pm", "4:30pm",
-    ];
+    // Get iCal busy times for the member(s)
+    const icalBusyTimes: string[] = [];
 
-    const bookedTimes = new Set(
-      (existingBookings || []).map((b) => b.meeting_time)
-    );
-
-    // Also check Google/Outlook calendar free/busy if tokens are configured
-    let calendarBusyTimes: string[] = [];
     if (memberId && memberId !== "all") {
       const { data: member } = await supabase
         .from("team_members")
-        .select("calendar_type, calendar_id")
+        .select("name")
         .eq("id", memberId)
         .single();
 
-      if (member?.calendar_id) {
-        if (member.calendar_type === "google") {
-          calendarBusyTimes = await getGoogleBusyTimes(member.calendar_id, date);
-        } else if (member.calendar_type === "outlook") {
-          calendarBusyTimes = await getOutlookBusyTimes(member.calendar_id, date);
+      if (member) {
+        const secretName = icalSecretName(member.name);
+        const icalUrl = Deno.env.get(secretName);
+        if (icalUrl) {
+          const busy = await getIcalBusyTimes(icalUrl, date);
+          icalBusyTimes.push(...busy);
+        }
+      }
+    } else {
+      // "Any team member" — a slot is only available if at least one member is free
+      // Collect all members and find slots where anyone is available
+      const { data: members } = await supabase
+        .from("team_members")
+        .select("name")
+        .eq("is_active", true);
+
+      if (members) {
+        // For each slot, check if every member is busy — only block if all are busy
+        const memberBusySets: Set<string>[] = [];
+
+        for (const member of members) {
+          const secretName = icalSecretName(member.name);
+          const icalUrl = Deno.env.get(secretName);
+          if (icalUrl) {
+            const busy = await getIcalBusyTimes(icalUrl, date);
+            memberBusySets.push(new Set(busy));
+          }
+        }
+
+        if (memberBusySets.length > 0) {
+          for (const slot of ALL_TIMES) {
+            const allBusy = memberBusySets.every((s) => s.has(slot));
+            if (allBusy) icalBusyTimes.push(slot);
+          }
         }
       }
     }
 
-    const busySet = new Set([...bookedTimes, ...calendarBusyTimes]);
+    const busySet = new Set([...bookedTimes, ...icalBusyTimes]);
     const availableTimes = ALL_TIMES.filter((t) => !busySet.has(t));
 
     return new Response(
@@ -85,112 +118,160 @@ Deno.serve(async (req) => {
   }
 });
 
-async function getGoogleBusyTimes(calendarId: string, date: string): Promise<string[]> {
-  const token = Deno.env.get("GOOGLE_CALENDAR_ACCESS_TOKEN");
-  if (!token) return [];
-
+async function getIcalBusyTimes(icalUrl: string, date: string): Promise<string[]> {
   try {
-    const res = await fetch(
-      "https://www.googleapis.com/calendar/v3/freeBusy",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          timeMin: `${date}T00:00:00Z`,
-          timeMax: `${date}T23:59:59Z`,
-          items: [{ id: calendarId }],
-        }),
-      }
-    );
-
+    const res = await fetch(icalUrl);
     if (!res.ok) {
-      await res.text();
+      console.error("Failed to fetch iCal:", res.status);
       return [];
     }
-
-    const data = await res.json();
-    const busySlots = data.calendars?.[calendarId]?.busy || [];
-    return busySlots.flatMap((slot: { start: string; end: string }) =>
-      getTimeSlotsInRange(slot.start, slot.end)
-    );
-  } catch {
+    const text = await res.text();
+    return parseIcalForDate(text, date);
+  } catch (err) {
+    console.error("iCal fetch error:", err);
     return [];
   }
 }
 
-async function getOutlookBusyTimes(userId: string, date: string): Promise<string[]> {
-  const token = Deno.env.get("OUTLOOK_CALENDAR_ACCESS_TOKEN");
-  if (!token) return [];
+function parseIcalForDate(icalText: string, date: string): string[] {
+  const busy: string[] = [];
 
-  try {
-    const res = await fetch(
-      "https://graph.microsoft.com/v1.0/me/calendar/getSchedule",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          schedules: [userId],
-          startTime: { dateTime: `${date}T00:00:00`, timeZone: "UTC" },
-          endTime: { dateTime: `${date}T23:59:59`, timeZone: "UTC" },
-          availabilityViewInterval: 30,
-        }),
+  // Unfold lines (iCal wraps long lines with \r\n + space)
+  const unfolded = icalText.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
+
+  // Extract all VEVENT blocks
+  const eventRegex = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
+  let match;
+
+  while ((match = eventRegex.exec(unfolded)) !== null) {
+    const block = match[1];
+
+    const dtstart = extractDtLine(block, "DTSTART");
+    const dtend = extractDtLine(block, "DTEND");
+
+    if (!dtstart) continue;
+
+    // All-day event (VALUE=DATE): DTSTART;VALUE=DATE:YYYYMMDD
+    if (dtstart.isDate) {
+      const endDate = dtend?.rawDate ?? dtstart.rawDate;
+      if (dateInRange(date, dtstart.rawDate, endDate)) {
+        return ALL_TIMES; // entire day is blocked
       }
-    );
-
-    if (!res.ok) {
-      await res.text();
-      return [];
+      continue;
     }
 
-    const data = await res.json();
-    const schedule = data.value?.[0];
-    if (!schedule?.scheduleItems) return [];
+    // Timed event — convert to local (Pacific) time
+    if (!dtstart.dateTime) continue;
 
-    return schedule.scheduleItems.flatMap(
-      (item: { start: { dateTime: string }; end: { dateTime: string } }) =>
-        getTimeSlotsInRange(item.start.dateTime, item.end.dateTime)
-    );
+    const startLocal = toSeattleTime(dtstart.dateTime);
+    const endLocal = dtend?.dateTime ? toSeattleTime(dtend.dateTime) : null;
+
+    // Check if event falls on the requested date
+    if (startLocal.date !== date) continue;
+
+    const startMins = startLocal.hour * 60 + startLocal.minute;
+    const endMins = endLocal
+      ? endLocal.hour * 60 + endLocal.minute
+      : startMins + 30;
+
+    for (const slot of ALL_TIMES) {
+      const slotMins = slotToMinutes(slot);
+      if (slotMins >= startMins && slotMins < endMins) {
+        busy.push(slot);
+      }
+    }
+  }
+
+  return busy;
+}
+
+interface DtValue {
+  isDate: boolean;
+  rawDate: string;       // YYYYMMDD
+  dateTime?: Date;
+}
+
+function extractDtLine(block: string, key: string): DtValue | null {
+  // Match DTSTART, DTSTART;VALUE=DATE, DTSTART;TZID=...
+  const regex = new RegExp(`${key}(?:;[^:]*)?:([^\r\n]+)`);
+  const match = block.match(regex);
+  if (!match) return null;
+
+  const value = match[1].trim();
+  const paramStr = block.match(new RegExp(`${key}([^:]*):`))?.[1] ?? "";
+
+  // All-day (date only)
+  if (paramStr.includes("VALUE=DATE") || /^\d{8}$/.test(value)) {
+    return { isDate: true, rawDate: value };
+  }
+
+  // Parse datetime
+  try {
+    // Format: YYYYMMDDTHHMMSSZ or YYYYMMDDTHHMMSS
+    const dt = parseIcsDateTime(value);
+    const rawDate = value.substring(0, 8);
+    return { isDate: false, rawDate, dateTime: dt };
   } catch {
-    return [];
+    return null;
   }
 }
 
-function getTimeSlotsInRange(startISO: string, endISO: string): string[] {
-  const start = new Date(startISO);
-  const end = new Date(endISO);
-  const slots: string[] = [];
+function parseIcsDateTime(value: string): Date {
+  // YYYYMMDDTHHMMSSZ or YYYYMMDDTHHMMSS
+  const y = value.substring(0, 4);
+  const mo = value.substring(4, 6);
+  const d = value.substring(6, 8);
+  const h = value.substring(9, 11);
+  const mi = value.substring(11, 13);
+  const s = value.substring(13, 15) || "00";
+  const isUtc = value.endsWith("Z");
 
-  const ALL_TIMES = [
-    "9:00am", "9:30am", "10:00am", "10:30am",
-    "11:00am", "11:30am", "1:00pm", "1:30pm",
-    "2:00pm", "2:30pm", "3:00pm", "3:30pm",
-    "4:00pm", "4:30pm",
-  ];
-
-  for (const time of ALL_TIMES) {
-    const [h, m] = convertTo24Hour(time).split(":").map(Number);
-    const slotDate = new Date(start);
-    slotDate.setUTCHours(h, m, 0, 0);
-    if (slotDate >= start && slotDate < end) {
-      slots.push(time);
-    }
-  }
-  return slots;
+  return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${isUtc ? "Z" : "-08:00"}`);
 }
 
-function convertTo24Hour(time12: string): string {
-  const match = time12.match(/^(\d{1,2}):(\d{2})(am|pm)$/i);
-  if (!match) return "09:00";
-  let hours = parseInt(match[1], 10);
-  const minutes = match[2];
+function toSeattleTime(dt: Date): { date: string; hour: number; minute: number } {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(dt);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+
+  const year = get("year");
+  const month = get("month");
+  const day = get("day");
+  let hour = parseInt(get("hour"));
+  const minute = parseInt(get("minute"));
+
+  // Intl returns 24 for midnight in some environments
+  if (hour === 24) hour = 0;
+
+  return {
+    date: `${year}-${month}-${day}`,
+    hour,
+    minute,
+  };
+}
+
+function dateInRange(date: string, startRaw: string, endRaw: string): boolean {
+  // All-day events: end date is exclusive in iCal
+  const target = date.replace(/-/g, "");
+  return target >= startRaw && target < endRaw;
+}
+
+function slotToMinutes(slot: string): number {
+  const match = slot.match(/^(\d{1,2}):(\d{2})(am|pm)$/i);
+  if (!match) return 0;
+  let h = parseInt(match[1]);
+  const m = parseInt(match[2]);
   const period = match[3].toLowerCase();
-  if (period === "pm" && hours !== 12) hours += 12;
-  if (period === "am" && hours === 12) hours = 0;
-  return `${hours.toString().padStart(2, "0")}:${minutes}`;
+  if (period === "pm" && h !== 12) h += 12;
+  if (period === "am" && h === 12) h = 0;
+  return h * 60 + m;
 }

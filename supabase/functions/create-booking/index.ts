@@ -36,6 +36,8 @@ Deno.serve(async (req) => {
     );
 
     // Get team member details if specific member selected
+    let memberName: string | null = null;
+    let memberEmail: string | null = null;
     let calendarType: string | null = null;
     let calendarId: string | null = null;
 
@@ -47,6 +49,8 @@ Deno.serve(async (req) => {
         .single();
 
       if (member) {
+        memberName = member.name;
+        memberEmail = member.calendar_id;
         calendarType = member.calendar_type;
         calendarId = member.calendar_id;
       }
@@ -61,6 +65,8 @@ Deno.serve(async (req) => {
 
       if (members && members.length > 0) {
         body.team_member_id = members[0].id;
+        memberName = members[0].name;
+        memberEmail = members[0].calendar_id;
         calendarType = members[0].calendar_type;
         calendarId = members[0].calendar_id;
       }
@@ -98,6 +104,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Send ICS email to team member
+    if (memberEmail) {
+      await sendIcsEmail({
+        toEmail: memberEmail,
+        toName: memberName ?? "Team Member",
+        bookerName: body.booker_name,
+        bookerEmail: body.booker_email,
+        meetingDate: body.meeting_date,
+        meetingTime: body.meeting_time,
+        durationMinutes: body.duration_minutes,
+        notes: body.notes,
+      });
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -114,6 +134,127 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+async function sendIcsEmail(params: {
+  toEmail: string;
+  toName: string;
+  bookerName: string;
+  bookerEmail: string;
+  meetingDate: string;
+  meetingTime: string;
+  durationMinutes: number;
+  notes?: string;
+}): Promise<void> {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? Deno.env.get("resend_api_key");
+  if (!resendApiKey) {
+    console.warn("RESEND_API_KEY not configured — skipping ICS email");
+    return;
+  }
+
+  const ics = generateIcs(params);
+  const icsBase64 = btoa(ics);
+
+  const formattedDate = new Date(params.meetingDate + "T00:00:00").toLocaleDateString("en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const emailBody = {
+    from: "Team Sync Hub <onboarding@resend.dev>",
+    to: [params.toEmail],
+    subject: `New booking: ${params.bookerName} — ${formattedDate} at ${params.meetingTime}`,
+    html: `
+      <p>Hi ${params.toName},</p>
+      <p>You have a new meeting booking:</p>
+      <ul>
+        <li><strong>Who:</strong> ${params.bookerName} (${params.bookerEmail})</li>
+        <li><strong>When:</strong> ${formattedDate} at ${params.meetingTime}</li>
+        <li><strong>Duration:</strong> ${params.durationMinutes} minutes</li>
+        ${params.notes ? `<li><strong>Notes:</strong> ${params.notes}</li>` : ""}
+      </ul>
+      <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
+    `,
+    attachments: [
+      {
+        filename: `meeting-${params.meetingDate}.ics`,
+        content: icsBase64,
+      },
+    ],
+  };
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(emailBody),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Resend API error:", errText);
+  }
+}
+
+function generateIcs(params: {
+  bookerName: string;
+  bookerEmail: string;
+  toName: string;
+  toEmail: string;
+  meetingDate: string;
+  meetingTime: string;
+  durationMinutes: number;
+  notes?: string;
+}): string {
+  const startDt = parseToUTC(params.meetingDate, params.meetingTime);
+  const endDt = new Date(startDt.getTime() + params.durationMinutes * 60000);
+
+  const uid = crypto.randomUUID();
+  const now = formatICSDate(new Date());
+  const start = formatICSDate(startDt);
+  const end = formatICSDate(endDt);
+  const description = params.notes ? params.notes.replace(/\n/g, "\\n") : "";
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Team Sync Hub//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:REQUEST",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${now}`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:Meeting with ${params.bookerName}`,
+    `DESCRIPTION:${description}`,
+    `ORGANIZER;CN=Team Sync Hub:mailto:onboarding@resend.dev`,
+    `ATTENDEE;CN=${params.toName};RSVP=TRUE:mailto:${params.toEmail}`,
+    `ATTENDEE;CN=${params.bookerName};RSVP=TRUE:mailto:${params.bookerEmail}`,
+    "STATUS:CONFIRMED",
+    "SEQUENCE:0",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+function parseToUTC(dateStr: string, time12: string): Date {
+  const match = time12.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  if (!match) return new Date(`${dateStr}T09:00:00Z`);
+
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const period = match[3].toLowerCase();
+
+  if (period === "pm" && hours !== 12) hours += 12;
+  if (period === "am" && hours === 12) hours = 0;
+
+  return new Date(`${dateStr}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00Z`);
+}
+
+function formatICSDate(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
 
 async function createGoogleCalendarEvent(
   booking: BookingRequest,
@@ -133,14 +274,8 @@ async function createGoogleCalendarEvent(
     const event = {
       summary: `Meeting with ${booking.booker_name}`,
       description: booking.notes || "",
-      start: {
-        dateTime: startDateTime,
-        timeZone: "UTC",
-      },
-      end: {
-        dateTime: endDate.toISOString().replace("Z", ""),
-        timeZone: "UTC",
-      },
+      start: { dateTime: startDateTime, timeZone: "UTC" },
+      end: { dateTime: endDate.toISOString().replace("Z", ""), timeZone: "UTC" },
       attendees: [{ email: booking.booker_email }],
       conferenceData: {
         createRequest: {
@@ -154,10 +289,7 @@ async function createGoogleCalendarEvent(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${googleToken}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${googleToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(event),
       }
     );
@@ -166,8 +298,7 @@ async function createGoogleCalendarEvent(
       const data = await res.json();
       return data.id;
     } else {
-      const errText = await res.text();
-      console.error("Google Calendar API error:", errText);
+      console.error("Google Calendar API error:", await res.text());
       return null;
     }
   } catch (err) {
@@ -193,18 +324,9 @@ async function createOutlookCalendarEvent(
 
     const event = {
       subject: `Meeting with ${booking.booker_name}`,
-      body: {
-        contentType: "Text",
-        content: booking.notes || "",
-      },
-      start: {
-        dateTime: startDateTime,
-        timeZone: "UTC",
-      },
-      end: {
-        dateTime: endDate.toISOString().replace("Z", ""),
-        timeZone: "UTC",
-      },
+      body: { contentType: "Text", content: booking.notes || "" },
+      start: { dateTime: startDateTime, timeZone: "UTC" },
+      end: { dateTime: endDate.toISOString().replace("Z", ""), timeZone: "UTC" },
       attendees: [
         {
           emailAddress: { address: booking.booker_email, name: booking.booker_name },
@@ -219,10 +341,7 @@ async function createOutlookCalendarEvent(
       `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(calendarId)}/events`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${outlookToken}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${outlookToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(event),
       }
     );
@@ -231,8 +350,7 @@ async function createOutlookCalendarEvent(
       const data = await res.json();
       return data.id;
     } else {
-      const errText = await res.text();
-      console.error("Outlook Calendar API error:", errText);
+      console.error("Outlook Calendar API error:", await res.text());
       return null;
     }
   } catch (err) {
