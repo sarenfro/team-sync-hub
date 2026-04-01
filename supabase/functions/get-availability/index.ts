@@ -79,16 +79,51 @@ Deno.serve(async (req) => {
 
       if (members) {
         const memberBusySets: Set<string>[] = [];
+        const debugInfo: Record<string, unknown>[] = [];
+
         for (const member of membersToCheck) {
           const envKey = icalEnvKey(member.name);
           const icalUrl = Deno.env.get(envKey);
-          console.log(`[debug] member="${member.name}" envKey="${envKey}" urlFound=${!!icalUrl}`);
+          const entry: Record<string, unknown> = { member: member.name, envKey, urlFound: !!icalUrl };
           if (icalUrl) {
             const busy = await getIcalBusyTimes(icalUrl, date);
-            console.log(`[debug] busy slots for ${member.name}:`, busy);
+            entry.busySlots = busy;
             busySetsPerMember.push(new Set(busy));
           }
+          debugInfo.push(entry);
         }
+        // Build combined busy set: a slot is busy if ANY member is busy during it
+        const icalBusyTimes = new Set<string>();
+        for (const busySet of busySetsPerMember) {
+          for (const slot of busySet) {
+            icalBusyTimes.add(slot);
+          }
+        }
+
+        const allBusy = new Set([...bookedTimes, ...icalBusyTimes]);
+        const availableTimes = ALL_TIMES.filter((t) => !allBusy.has(t));
+
+        return new Response(JSON.stringify({ available_times: availableTimes, date, debug: debugInfo }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+
+        // Build combined busy set: a slot is busy if ANY member is busy during
+        it;
+        const icalBusyTimes = new Set<string>();
+        for (const busySet of busySetsPerMember) {
+          for (const slot of busySet) {
+            icalBusyTimes.add(slot);
+          }
+        }
+
+        const allBusy = new Set([...bookedTimes, ...icalBusyTimes]);
+        const availableTimes = ALL_TIMES.filter((t) => !allBusy.has(t));
+
+        return new Response(JSON.stringify({ available_times: availableTimes, date, debug: debugInfo }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
         if (memberBusySets.length > 0) {
           for (const slot of ALL_TIMES) {
             const allBusy = memberBusySets.every((s) => s.has(slot));
