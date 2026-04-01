@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     }
 
     const busySetsPerMember: Set<string>[] = [];
-    const debugInfo: Record<string, unknown>[] = [];
+    
 
     for (const member of membersToCheck) {
       const envKey = icalEnvKey(member.name);
