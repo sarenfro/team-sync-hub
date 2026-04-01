@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     const availableTimes = ALL_TIMES.filter((t) => !allBusy.has(t));
 
     return new Response(
-      JSON.stringify({ available_times: availableTimes, date, debug: debugInfo }),
+      JSON.stringify({ available_times: availableTimes, date }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
