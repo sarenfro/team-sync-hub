@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { TeamMember } from "./TeamMemberSelect";
 
 interface BookingConfirmationProps {
-  member: TeamMember;
+  members: TeamMember[];
   date: Date;
   time: string;
   bookerName: string;
@@ -14,18 +14,19 @@ interface BookingConfirmationProps {
   onReset: () => void;
 }
 
-const BookingConfirmation = ({
-  member,
-  date,
-  time,
-  bookerName,
-  bookerEmail,
-  onReset,
-}: BookingConfirmationProps) => {
+function formatMemberNames(members: TeamMember[]): string {
+  if (members.length === 0) return "";
+  if (members.length === 1) return members[0].name;
+  const firsts = members.map((m) => m.name.split(" ")[0]);
+  return firsts.slice(0, -1).join(", ") + " & " + firsts[firsts.length - 1];
+}
+
+const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onReset }: BookingConfirmationProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const meetingDate = format(date, "yyyy-MM-dd");
-  const meetingTitle = `Meeting with ${member.name}`;
+  const memberLabel = formatMemberNames(members);
+  const meetingTitle = `Meeting with ${memberLabel}`;
 
   const handleDownloadICS = async () => {
     setIsDownloading(true);
@@ -37,7 +38,7 @@ const BookingConfirmation = ({
           meeting_date: meetingDate,
           meeting_time: time,
           duration_minutes: 30,
-          team_member_name: member.name,
+          team_member_name: memberLabel,
         },
       });
 
@@ -62,7 +63,11 @@ const BookingConfirmation = ({
   const getGoogleCalendarUrl = () => {
     const startDt = parseDateTime(meetingDate, time);
     const endDt = new Date(startDt.getTime() + 30 * 60000);
-    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const fmt = (d: Date) =>
+      d
+        .toISOString()
+        .replace(/[-:]/g, "")
+        .replace(/\.\d{3}/, "");
     const params = new URLSearchParams({
       action: "TEMPLATE",
       text: meetingTitle,
@@ -95,9 +100,7 @@ const BookingConfirmation = ({
 
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-foreground">You are scheduled</h2>
-          <p className="text-muted-foreground">
-            Add this meeting to your calendar using the options below.
-          </p>
+          <p className="text-muted-foreground">Add this meeting to your calendar using the options below.</p>
         </div>
       </div>
 
@@ -107,7 +110,7 @@ const BookingConfirmation = ({
         <div className="space-y-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-3">
             <User className="h-4 w-4 flex-shrink-0 text-booking-hero" />
-            <span>{member.name}</span>
+            <span>{memberLabel}</span>
           </div>
           <div className="flex items-center gap-3">
             <Calendar className="h-4 w-4 flex-shrink-0 text-booking-hero" />
@@ -120,7 +123,6 @@ const BookingConfirmation = ({
         </div>
       </div>
 
-      {/* Calendar buttons */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-foreground">Add to your calendar</p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
@@ -142,13 +144,7 @@ const BookingConfirmation = ({
             <ExternalLink className="h-4 w-4" />
             Outlook Calendar
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadICS}
-            disabled={isDownloading}
-            className="gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={handleDownloadICS} disabled={isDownloading} className="gap-2">
             <Download className="h-4 w-4" />
             {isDownloading ? "Downloading..." : "Download .ics"}
           </Button>
