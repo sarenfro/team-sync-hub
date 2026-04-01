@@ -74,18 +74,15 @@ Deno.serve(async (req) => {
     }
 
     const busySetsPerMember: Set<string>[] = [];
-    const debugInfo: Record<string, unknown>[] = [];
+    
 
     for (const member of membersToCheck) {
       const envKey = icalEnvKey(member.name);
       const icalUrl = Deno.env.get(envKey);
-      const entry: Record<string, unknown> = { member: member.name, envKey, urlFound: !!icalUrl };
-      if (icalUrl) {
-        const busy = await getIcalBusyTimes(icalUrl, date);
-        entry.busySlots = busy;
-        busySetsPerMember.push(new Set(busy));
-      }
-      debugInfo.push(entry);
+        if (icalUrl) {
+          const busy = await getIcalBusyTimes(icalUrl, date);
+          busySetsPerMember.push(new Set(busy));
+        }
     }
 
     const icalBusyTimes = new Set<string>();
@@ -99,7 +96,7 @@ Deno.serve(async (req) => {
     const availableTimes = ALL_TIMES.filter((t) => !allBusy.has(t));
 
     return new Response(
-      JSON.stringify({ available_times: availableTimes, date, debug: debugInfo }),
+      JSON.stringify({ available_times: availableTimes, date }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
