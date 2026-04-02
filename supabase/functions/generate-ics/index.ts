@@ -20,13 +20,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const startDt = parseToUTC(meeting_date, meeting_time);
-    const endDt = new Date(startDt.getTime() + (duration_minutes || 30) * 60000);
+    const { hours: startH, minutes: startM } = parse12To24(meeting_time);
+    const dur = duration_minutes || 30;
+    const endTotalMins = startH * 60 + startM + dur;
+    const endH = Math.floor(endTotalMins / 60);
+    const endM = endTotalMins % 60;
+
+    const dateCompact = meeting_date.replace(/-/g, "");
+    const start = `${dateCompact}T${pad(startH)}${pad(startM)}00`;
+    const end = `${dateCompact}T${pad(endH)}${pad(endM)}00`;
 
     const uid = crypto.randomUUID();
     const now = formatICSDate(new Date());
-    const start = formatICSDate(startDt);
-    const end = formatICSDate(endDt);
 
     const summary = team_member_name
       ? `Meeting with ${team_member_name}`
@@ -40,11 +45,28 @@ Deno.serve(async (req) => {
       "PRODID:-//Team Scheduler//EN",
       "CALSCALE:GREGORIAN",
       "METHOD:REQUEST",
+      "BEGIN:VTIMEZONE",
+      "TZID:America/Los_Angeles",
+      "BEGIN:STANDARD",
+      "DTSTART:19701101T020000",
+      "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU",
+      "TZOFFSETFROM:-0700",
+      "TZOFFSETTO:-0800",
+      "TZNAME:PST",
+      "END:STANDARD",
+      "BEGIN:DAYLIGHT",
+      "DTSTART:19700308T020000",
+      "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU",
+      "TZOFFSETFROM:-0800",
+      "TZOFFSETTO:-0700",
+      "TZNAME:PDT",
+      "END:DAYLIGHT",
+      "END:VTIMEZONE",
       "BEGIN:VEVENT",
       `UID:${uid}`,
       `DTSTAMP:${now}`,
-      `DTSTART:${start}`,
-      `DTEND:${end}`,
+      `DTSTART;TZID=America/Los_Angeles:${start}`,
+      `DTEND;TZID=America/Los_Angeles:${end}`,
       `SUMMARY:${summary}`,
       `DESCRIPTION:${description}`,
       `ORGANIZER;CN=Team Scheduler:mailto:${ORGANIZER_EMAIL}`,
@@ -69,24 +91,19 @@ Deno.serve(async (req) => {
   }
 });
 
-function parseToUTC(dateStr: string, time12: string): Date {
+function parse12To24(time12: string): { hours: number; minutes: number } {
   const match = time12.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
-  if (!match) return new Date(`${dateStr}T17:00:00Z`); // 9am PST fallback
-
+  if (!match) return { hours: 9, minutes: 0 };
   let hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
   const period = match[3].toLowerCase();
-
   if (period === "pm" && hours !== 12) hours += 12;
   if (period === "am" && hours === 12) hours = 0;
+  return { hours, minutes };
+}
 
-  const naive = new Date(`${dateStr}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`);
-  const pacificStr = naive.toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
-  const utcStr = naive.toLocaleString("en-US", { timeZone: "UTC" });
-  const pacificMs = new Date(pacificStr).getTime();
-  const utcMs = new Date(utcStr).getTime();
-  const offsetMs = utcMs - pacificMs;
-  return new Date(naive.getTime() + offsetMs);
+function pad(n: number): string {
+  return n.toString().padStart(2, "0");
 }
 
 function formatICSDate(d: Date): string {

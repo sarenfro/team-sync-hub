@@ -217,13 +217,17 @@ function generateIcs(params: {
   durationMinutes: number;
   notes?: string;
 }): string {
-  const startDt = parseToUTC(params.meetingDate, params.meetingTime);
-  const endDt = new Date(startDt.getTime() + params.durationMinutes * 60000);
+  const { hours: startH, minutes: startM } = parse12To24(params.meetingTime);
+  const endTotalMins = startH * 60 + startM + params.durationMinutes;
+  const endH = Math.floor(endTotalMins / 60);
+  const endM = endTotalMins % 60;
+
+  const dateCompact = params.meetingDate.replace(/-/g, "");
+  const start = `${dateCompact}T${pad(startH)}${pad(startM)}00`;
+  const end = `${dateCompact}T${pad(endH)}${pad(endM)}00`;
 
   const uid = crypto.randomUUID();
   const now = formatICSDate(new Date());
-  const start = formatICSDate(startDt);
-  const end = formatICSDate(endDt);
   const description = params.notes ? params.notes.replace(/\n/g, "\\n") : "";
 
   return [
@@ -232,11 +236,28 @@ function generateIcs(params: {
     "PRODID:-//MBAA EC//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:REQUEST",
+    "BEGIN:VTIMEZONE",
+    "TZID:America/Los_Angeles",
+    "BEGIN:STANDARD",
+    "DTSTART:19701101T020000",
+    "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU",
+    "TZOFFSETFROM:-0700",
+    "TZOFFSETTO:-0800",
+    "TZNAME:PST",
+    "END:STANDARD",
+    "BEGIN:DAYLIGHT",
+    "DTSTART:19700308T020000",
+    "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU",
+    "TZOFFSETFROM:-0800",
+    "TZOFFSETTO:-0700",
+    "TZNAME:PDT",
+    "END:DAYLIGHT",
+    "END:VTIMEZONE",
     "BEGIN:VEVENT",
     `UID:${uid}`,
     `DTSTAMP:${now}`,
-    `DTSTART:${start}`,
-    `DTEND:${end}`,
+    `DTSTART;TZID=America/Los_Angeles:${start}`,
+    `DTEND;TZID=America/Los_Angeles:${end}`,
     `SUMMARY:Meeting with ${params.bookerName}`,
     `DESCRIPTION:${description}`,
     `ORGANIZER;CN=MBAA EC:mailto:mbaa@uw.edu`,
@@ -249,26 +270,19 @@ function generateIcs(params: {
   ].join("\r\n");
 }
 
-function parseToUTC(dateStr: string, time12: string): Date {
+function parse12To24(time12: string): { hours: number; minutes: number } {
   const match = time12.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
-  if (!match) return new Date(`${dateStr}T17:00:00Z`); // 9am PST fallback
-
+  if (!match) return { hours: 9, minutes: 0 };
   let hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
   const period = match[3].toLowerCase();
-
   if (period === "pm" && hours !== 12) hours += 12;
   if (period === "am" && hours === 12) hours = 0;
+  return { hours, minutes };
+}
 
-  // Create a date in Pacific time and extract the correct UTC equivalent
-  // Using Intl to determine the actual UTC offset (handles PST/PDT automatically)
-  const naive = new Date(`${dateStr}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`);
-  const pacificStr = naive.toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
-  const utcStr = naive.toLocaleString("en-US", { timeZone: "UTC" });
-  const pacificMs = new Date(pacificStr).getTime();
-  const utcMs = new Date(utcStr).getTime();
-  const offsetMs = utcMs - pacificMs;
-  return new Date(naive.getTime() + offsetMs);
+function pad(n: number): string {
+  return n.toString().padStart(2, "0");
 }
 
 function formatICSDate(d: Date): string {
