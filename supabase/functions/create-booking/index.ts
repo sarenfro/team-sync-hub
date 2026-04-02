@@ -251,7 +251,7 @@ function generateIcs(params: {
 
 function parseToUTC(dateStr: string, time12: string): Date {
   const match = time12.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
-  if (!match) return new Date(`${dateStr}T09:00:00Z`);
+  if (!match) return new Date(`${dateStr}T17:00:00Z`); // 9am PST fallback
 
   let hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
@@ -260,7 +260,15 @@ function parseToUTC(dateStr: string, time12: string): Date {
   if (period === "pm" && hours !== 12) hours += 12;
   if (period === "am" && hours === 12) hours = 0;
 
-  return new Date(`${dateStr}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00Z`);
+  // Create a date in Pacific time and extract the correct UTC equivalent
+  // Using Intl to determine the actual UTC offset (handles PST/PDT automatically)
+  const naive = new Date(`${dateStr}T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`);
+  const pacificStr = naive.toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
+  const utcStr = naive.toLocaleString("en-US", { timeZone: "UTC" });
+  const pacificMs = new Date(pacificStr).getTime();
+  const utcMs = new Date(utcStr).getTime();
+  const offsetMs = utcMs - pacificMs;
+  return new Date(naive.getTime() + offsetMs);
 }
 
 function formatICSDate(d: Date): string {

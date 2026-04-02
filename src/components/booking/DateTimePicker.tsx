@@ -103,7 +103,7 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
     }
   };
 
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timezone = "America/Los_Angeles";
   const memberLabel = formatMemberNames(members);
 
   return (
