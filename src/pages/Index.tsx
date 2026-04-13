@@ -5,9 +5,11 @@ import TeamMemberSelect, { type TeamMember } from "@/components/booking/TeamMemb
 import DateTimePicker from "@/components/booking/DateTimePicker";
 import BookingForm from "@/components/booking/BookingForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
+import ScheduleView from "@/components/booking/ScheduleView";
+import { Calendar, CalendarCheck } from "lucide-react";
 
 type Step = "select-member" | "select-datetime" | "enter-details" | "confirmed";
-
+type PageView = "booking" | "schedule";
 const Index = () => {
   const [step, setStep] = useState<Step>("select-member");
   const [members, setMembers] = useState<TeamMember[]>([]);
