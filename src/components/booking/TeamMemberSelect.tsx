@@ -8,6 +8,7 @@ export interface TeamMember {
   avatar?: string;
   calendarType: "google" | "outlook";
   colorIndex: number;
+  calendarId?: string;
 }
 
 interface TeamMemberSelectProps {

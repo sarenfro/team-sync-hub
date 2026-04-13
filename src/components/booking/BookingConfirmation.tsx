@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { CheckCircle2, Calendar, Clock, User, Video, Download, ExternalLink } from "lucide-react";
+import { CheckCircle2, Calendar, Clock, User, Video, Download, ExternalLink, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { TeamMember } from "./TeamMemberSelect";

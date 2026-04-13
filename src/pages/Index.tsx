@@ -32,6 +32,7 @@ const Index = () => {
             role: m.role ?? "",
             calendarType: m.calendar_type as "google" | "outlook",
             colorIndex: m.color_index,
+            calendarId: m.calendar_id ?? undefined,
           })),
         );
       }
