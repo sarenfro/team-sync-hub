@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     const { data: memberRows } = await supabase
       .from("team_members")
-      .select("id, name, calendar_type, calendar_id")
+      .select("id, name, calendar_type, calendar_id, color_index")
       .in("id", memberIds);
 
     const members = memberRows ?? [];
@@ -84,6 +84,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Build zoom links for all members
+    const zoomLinks = members
+      .filter((m) => m.calendar_id && m.calendar_id.endsWith("@uw.edu"))
+      .map((m) => {
+        const uwnetid = m.calendar_id!.split("@")[0];
+        return { name: m.name.split(" ")[0], url: `https://washington.zoom.us/my/${uwnetid}` };
+      });
+
     // Send ICS email to each team member
     for (const member of members) {
       if (member.calendar_id) {
@@ -96,6 +104,7 @@ Deno.serve(async (req) => {
           meetingTime: body.meeting_time,
           durationMinutes: body.duration_minutes,
           notes: body.notes,
+          zoomLinks,
         });
       }
     }
@@ -112,6 +121,7 @@ Deno.serve(async (req) => {
       durationMinutes: body.duration_minutes,
       notes: body.notes,
       isBookerConfirmation: true,
+      zoomLinks,
     });
 
     return new Response(
@@ -137,6 +147,7 @@ async function sendIcsEmail(params: {
   durationMinutes: number;
   notes?: string;
   isBookerConfirmation?: boolean;
+  zoomLinks?: { name: string; url: string }[];
 }): Promise<void> {
   const brevoApiKey = Deno.env.get("BREVO_API_KEY");
   if (!brevoApiKey) {
@@ -144,12 +155,18 @@ async function sendIcsEmail(params: {
     return;
   }
 
-  const ics = generateIcs(params);
+  const ics = generateIcs({ ...params, zoomLinks: params.zoomLinks });
   const icsBase64 = btoa(ics);
 
   const formattedDate = new Date(params.meetingDate + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
+
+  const zoomHtml = (params.zoomLinks && params.zoomLinks.length > 0)
+    ? `<p><strong>Zoom:</strong> ${params.zoomLinks.map((z) =>
+        `<a href="${z.url}">${params.zoomLinks!.length > 1 ? `${z.name}'s Zoom` : 'Join via Zoom'}</a>`
+      ).join(" | ")}</p>`
+    : "";
 
   const subject = params.isBookerConfirmation
     ? `Your meeting is confirmed — ${formattedDate} at ${params.meetingTime}`
@@ -163,6 +180,7 @@ async function sendIcsEmail(params: {
         <p><strong>With:</strong> ${params.bookerName}</p>
         <p><strong>When:</strong> ${formattedDate} at ${params.meetingTime}</p>
         <p><strong>Duration:</strong> ${params.durationMinutes} minutes</p>
+        ${zoomHtml}
         ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
       </div>
       <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
@@ -174,6 +192,7 @@ async function sendIcsEmail(params: {
         <p><strong>Who:</strong> ${params.bookerName} (${params.bookerEmail})</p>
         <p><strong>When:</strong> ${formattedDate} at ${params.meetingTime}</p>
         <p><strong>Duration:</strong> ${params.durationMinutes} minutes</p>
+        ${zoomHtml}
         ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
       </div>
       <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
@@ -216,6 +235,7 @@ function generateIcs(params: {
   meetingTime: string;
   durationMinutes: number;
   notes?: string;
+  zoomLinks?: { name: string; url: string }[];
 }): string {
   const { hours: startH, minutes: startM } = parse12To24(params.meetingTime);
   const endTotalMins = startH * 60 + startM + params.durationMinutes;
@@ -228,7 +248,11 @@ function generateIcs(params: {
 
   const uid = crypto.randomUUID();
   const now = formatICSDate(new Date());
-  const description = params.notes ? params.notes.replace(/\n/g, "\\n") : "";
+  const zoomUrl = params.zoomLinks && params.zoomLinks.length > 0 ? params.zoomLinks[0].url : "";
+  const descParts = [];
+  if (zoomUrl) descParts.push(`Zoom: ${zoomUrl}`);
+  if (params.notes) descParts.push(params.notes);
+  const description = descParts.join("\\n").replace(/\n/g, "\\n");
 
   return [
     "BEGIN:VCALENDAR",
@@ -260,6 +284,7 @@ function generateIcs(params: {
     `DTEND;TZID=America/Los_Angeles:${end}`,
     `SUMMARY:Meeting with ${params.bookerName}`,
     `DESCRIPTION:${description}`,
+    ...(zoomUrl ? [`LOCATION:${zoomUrl}`] : []),
     `ORGANIZER;CN=MBAA EC:mailto:mbaa@uw.edu`,
     `ATTENDEE;CN=${params.toName};RSVP=TRUE:mailto:${params.toEmail}`,
     `ATTENDEE;CN=${params.bookerName};RSVP=TRUE:mailto:${params.bookerEmail}`,

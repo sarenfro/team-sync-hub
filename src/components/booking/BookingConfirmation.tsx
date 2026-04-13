@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { CheckCircle2, Calendar, Clock, User, Video, Download, ExternalLink } from "lucide-react";
+import { CheckCircle2, Calendar, Clock, User, Video, Download, ExternalLink, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { TeamMember } from "./TeamMemberSelect";
@@ -21,11 +21,21 @@ function formatMemberNames(members: TeamMember[]): string {
   return firsts.slice(0, -1).join(", ") + " & " + firsts[firsts.length - 1];
 }
 
+function getZoomLinks(members: TeamMember[]): { name: string; url: string }[] {
+  return members
+    .filter((m) => m.calendarId && m.calendarId.endsWith("@uw.edu"))
+    .map((m) => {
+      const uwnetid = m.calendarId!.split("@")[0];
+      return { name: m.name.split(" ")[0], url: `https://washington.zoom.us/my/${uwnetid}` };
+    });
+}
+
 const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onReset }: BookingConfirmationProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const meetingDate = format(date, "yyyy-MM-dd");
   const memberLabel = formatMemberNames(members);
+  const zoomLinks = getZoomLinks(members);
   const meetingTitle = `Meeting with ${memberLabel}`;
 
   const handleDownloadICS = async () => {
@@ -120,6 +130,24 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
             <Clock className="h-4 w-4 flex-shrink-0 text-booking-hero" />
             <span>{time} (30 minutes)</span>
           </div>
+          {zoomLinks.length > 0 && (
+            <div className="flex items-start gap-3">
+              <Video className="h-4 w-4 flex-shrink-0 text-booking-hero mt-0.5" />
+              <div className="space-y-1">
+                {zoomLinks.map((z) => (
+                  <a
+                    key={z.url}
+                    href={z.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-booking-hero underline hover:opacity-80"
+                  >
+                    {zoomLinks.length > 1 ? `${z.name}'s Zoom` : "Join via Zoom"}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
