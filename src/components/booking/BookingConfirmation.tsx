@@ -21,6 +21,15 @@ function formatMemberNames(members: TeamMember[]): string {
   return firsts.slice(0, -1).join(", ") + " & " + firsts[firsts.length - 1];
 }
 
+function getZoomLinks(members: TeamMember[]): { name: string; url: string }[] {
+  return members
+    .filter((m) => m.calendarId && m.calendarId.endsWith("@uw.edu"))
+    .map((m) => {
+      const uwnetid = m.calendarId!.split("@")[0];
+      return { name: m.name.split(" ")[0], url: `https://washington.zoom.us/my/${uwnetid}` };
+    });
+}
+
 const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onReset }: BookingConfirmationProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
