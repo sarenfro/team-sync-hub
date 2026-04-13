@@ -11,6 +11,7 @@ import { Calendar, CalendarCheck } from "lucide-react";
 type Step = "select-member" | "select-datetime" | "enter-details" | "confirmed";
 type PageView = "booking" | "schedule";
 const Index = () => {
+  const [pageView, setPageView] = useState<PageView>("booking");
   const [step, setStep] = useState<Step>("select-member");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<TeamMember[]>([]);
