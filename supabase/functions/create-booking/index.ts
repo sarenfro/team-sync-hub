@@ -235,6 +235,7 @@ function generateIcs(params: {
   meetingTime: string;
   durationMinutes: number;
   notes?: string;
+  zoomLinks?: { name: string; url: string }[];
 }): string {
   const { hours: startH, minutes: startM } = parse12To24(params.meetingTime);
   const endTotalMins = startH * 60 + startM + params.durationMinutes;
@@ -247,7 +248,11 @@ function generateIcs(params: {
 
   const uid = crypto.randomUUID();
   const now = formatICSDate(new Date());
-  const description = params.notes ? params.notes.replace(/\n/g, "\\n") : "";
+  const zoomUrl = params.zoomLinks && params.zoomLinks.length > 0 ? params.zoomLinks[0].url : "";
+  const descParts = [];
+  if (zoomUrl) descParts.push(`Zoom: ${zoomUrl}`);
+  if (params.notes) descParts.push(params.notes);
+  const description = descParts.join("\\n").replace(/\n/g, "\\n");
 
   return [
     "BEGIN:VCALENDAR",
