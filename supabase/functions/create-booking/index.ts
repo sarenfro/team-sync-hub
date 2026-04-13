@@ -284,6 +284,7 @@ function generateIcs(params: {
     `DTEND;TZID=America/Los_Angeles:${end}`,
     `SUMMARY:Meeting with ${params.bookerName}`,
     `DESCRIPTION:${description}`,
+    ...(zoomUrl ? [`LOCATION:${zoomUrl}`] : []),
     `ORGANIZER;CN=MBAA EC:mailto:mbaa@uw.edu`,
     `ATTENDEE;CN=${params.toName};RSVP=TRUE:mailto:${params.toEmail}`,
     `ATTENDEE;CN=${params.bookerName};RSVP=TRUE:mailto:${params.bookerEmail}`,
