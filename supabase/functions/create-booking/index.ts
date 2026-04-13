@@ -155,12 +155,18 @@ async function sendIcsEmail(params: {
     return;
   }
 
-  const ics = generateIcs(params);
+  const ics = generateIcs({ ...params, zoomLinks: params.zoomLinks });
   const icsBase64 = btoa(ics);
 
   const formattedDate = new Date(params.meetingDate + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
+
+  const zoomHtml = (params.zoomLinks && params.zoomLinks.length > 0)
+    ? `<p><strong>Zoom:</strong> ${params.zoomLinks.map((z) =>
+        `<a href="${z.url}">${params.zoomLinks!.length > 1 ? `${z.name}'s Zoom` : 'Join via Zoom'}</a>`
+      ).join(" | ")}</p>`
+    : "";
 
   const subject = params.isBookerConfirmation
     ? `Your meeting is confirmed — ${formattedDate} at ${params.meetingTime}`
@@ -174,6 +180,7 @@ async function sendIcsEmail(params: {
         <p><strong>With:</strong> ${params.bookerName}</p>
         <p><strong>When:</strong> ${formattedDate} at ${params.meetingTime}</p>
         <p><strong>Duration:</strong> ${params.durationMinutes} minutes</p>
+        ${zoomHtml}
         ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
       </div>
       <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
@@ -185,6 +192,7 @@ async function sendIcsEmail(params: {
         <p><strong>Who:</strong> ${params.bookerName} (${params.bookerEmail})</p>
         <p><strong>When:</strong> ${formattedDate} at ${params.meetingTime}</p>
         <p><strong>Duration:</strong> ${params.durationMinutes} minutes</p>
+        ${zoomHtml}
         ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
       </div>
       <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
