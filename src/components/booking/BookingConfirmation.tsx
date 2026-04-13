@@ -35,6 +35,7 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
 
   const meetingDate = format(date, "yyyy-MM-dd");
   const memberLabel = formatMemberNames(members);
+  const zoomLinks = getZoomLinks(members);
   const meetingTitle = `Meeting with ${memberLabel}`;
 
   const handleDownloadICS = async () => {
@@ -129,6 +130,24 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
             <Clock className="h-4 w-4 flex-shrink-0 text-booking-hero" />
             <span>{time} (30 minutes)</span>
           </div>
+          {zoomLinks.length > 0 && (
+            <div className="flex items-start gap-3">
+              <Video className="h-4 w-4 flex-shrink-0 text-booking-hero mt-0.5" />
+              <div className="space-y-1">
+                {zoomLinks.map((z) => (
+                  <a
+                    key={z.url}
+                    href={z.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-booking-hero underline hover:opacity-80"
+                  >
+                    {zoomLinks.length > 1 ? `${z.name}'s Zoom` : "Join via Zoom"}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
