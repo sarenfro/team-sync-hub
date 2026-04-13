@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team Sync Hub — UW Foster MBAA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --purple: #4b2e83;
+      --purple-dark: #351f5e;
+      --purple-light: #6a46a8;
+      --gold: #b7a57a;
+      --gold-light: #d4c49a;
+      --cream: #faf8f4;
+      --text: #1a1a2e;
+      --muted: #6b6b80;
+      --white: #ffffff;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: var(--purple);
+      position: relative;
+      overflow: hidden;
+      padding: 80px 24px 100px;
+      text-align: center;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 120%, rgba(183,165,122,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% -10%, rgba(106,70,168,0.5) 0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(183,165,122,0.2);
+      border: 1px solid rgba(183,165,122,0.45);
+      color: var(--gold-light);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 100px;
+      margin-bottom: 28px;
+      position: relative;
+    }
+
+    .hero h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.8rem, 7vw, 5rem);
+      color: var(--white);
+      line-height: 1.1;
+      position: relative;
+      margin-bottom: 8px;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--gold-light);
+    }
+
+    .hero-sub {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.72);
+      font-weight: 300;
+      max-width: 520px;
+      margin: 18px auto 36px;
+      position: relative;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      position: relative;
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: var(--purple-dark);
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 13px 28px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary:hover {
+      background: var(--gold-light);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: var(--white);
+      font-weight: 500;
+      font-size: 0.95rem;
+      padding: 13px 28px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.25);
+      transition: background 0.2s, transform 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.18);
+      transform: translateY(-2px);
+    }
+
+    /* ── WAVE DIVIDER ── */
+    .wave {
+      display: block;
+      background: var(--purple);
+      line-height: 0;
+    }
+    .wave svg {
+      display: block;
+      width: 100%;
+    }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section {
+      padding: 72px 24px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--purple-light);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.7rem, 4vw, 2.4rem);
+      color: var(--purple);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .section-body {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 620px;
+      line-height: 1.75;
+    }
+
+    /* ── ABOUT SPLIT ── */
+    .about-grid {
+      max-width: 900px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: start;
+    }
+
+    @media (max-width: 640px) {
+      .about-grid { grid-template-columns: 1fr; gap: 40px; }
+    }
+
+    .problem-card {
+      background: var(--white);
+      border: 1px solid rgba(75,46,131,0.1);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 24px rgba(75,46,131,0.06);
+    }
+
+    .problem-card .icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(75,46,131,0.08);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 20px;
+    }
+
+    .problem-card h3 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.25rem;
+      color: var(--purple);
+      margin-bottom: 10px;
+    }
+
+    .problem-card p {
+      font-size: 0.95rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ── FEATURES ── */
+    .features-section {
+      background: var(--white);
+      border-top: 1px solid rgba(75,46,131,0.08);
+      border-bottom: 1px solid rgba(75,46,131,0.08);
+    }
+
+    .features-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      margin-top: 48px;
+    }
+
+    @media (max-width: 720px) {
+      .features-grid { grid-template-columns: 1fr; }
+    }
+
+    .feature-item {
+      padding: 28px 24px;
+      border-radius: 14px;
+      border: 1px solid rgba(75,46,131,0.1);
+      background: var(--cream);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-item:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(75,46,131,0.1);
+    }
+
+    .feature-icon {
+      font-size: 26px;
+      margin-bottom: 14px;
+    }
+
+    .feature-item h4 {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--purple);
+      margin-bottom: 8px;
+    }
+
+    .feature-item p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    /* ── TECH STACK ── */
+    .stack-section {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .stack-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--white);
+      border: 1px solid rgba(75,46,131,0.15);
+      border-radius: 100px;
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--purple);
+      box-shadow: 0 2px 8px rgba(75,46,131,0.05);
+    }
+
+    .pill-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── BUILT BY ── */
+    .built-by-section {
+      background: var(--purple-dark);
+      color: var(--white);
+      text-align: center;
+    }
+
+    .built-by-section .section-label {
+      color: var(--gold);
+    }
+
+    .built-by-section .section-title {
+      color: var(--white);
+    }
+
+    .built-by-section .section-body {
+      color: rgba(255,255,255,0.65);
+      margin: 0 auto;
+    }
+
+    .built-by-links {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 32px;
+    }
+
+    .built-by-links a {
+      color: var(--gold-light);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(183,165,122,0.3);
+      padding-bottom: 2px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .built-by-links a:hover {
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--purple-dark);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 28px 24px;
+      text-align: center;
+      color: rgba(255,255,255,0.4);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: rgba(255,255,255,0.55);
+      text-decoration: none;
+    }
+    footer a:hover { color: var(--gold-light); }
+
+    .divider {
+      display: inline-block;
+      margin: 0 10px;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-badge">UW Foster MBAA — Free to use</div>
+    <h1>Team Sync <em>Hub</em></h1>
+    <p class="hero-sub">A free scheduling tool built for Foster MBA students to easily book time with their MBAA executive council.</p>
+    <div class="hero-actions">
+      <a class="btn-primary" href="https://uwteamsynchub.lovable.app" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Book a Meeting
+      </a>
+      <a class="btn-secondary" href="https://github.com/sarenfro/team-sync-hub" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.386-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+  </header>
+
+  <!-- WAVE -->
+  <div class="wave">
+    <svg viewBox="0 0 1440 60" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" height="60">
+      <path d="M0,30 C360,60 1080,0 1440,30 L1440,0 L0,0 Z" fill="#4b2e83"/>
+    </svg>
+  </div>
+
+  <!-- ABOUT -->
+  <section>
+    <div class="about-grid">
+      <div>
+        <p class="section-label">The Problem</p>
+        <h2 class="section-title">Calendly works great — if you can afford it.</h2>
+        <p class="section-body">
+          Tools like Calendly charge per user per month, which adds up fast for a volunteer-run student organization. For the UW Foster MBAA, that cost isn't worth it when the need is straightforward: students should be able to book time with exec council members without friction.
+        </p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">✦</div>
+        <h3>The Solution</h3>
+        <p>
+          Team Sync Hub is a purpose-built, free scheduling platform for the UW Foster MBA community. Students can see council member availability and book meetings directly, no paid subscription required.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features-section">
+    <div class="features-inner">
+      <p class="section-label">What it does</p>
+      <h2 class="section-title">Built for how the MBAA actually works</h2>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">📅</div>
+          <h4>Self-serve scheduling</h4>
+          <p>Students browse available times and book directly, no back-and-forth email chains required.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">👥</div>
+          <h4>Council member profiles</h4>
+          <p>Each exec council member has their own availability and profile, so students know exactly who they're booking with.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔒</div>
+          <h4>Secure backend</h4>
+          <p>Built on Supabase, so meeting data is stored securely with row-level access controls — no spreadsheet hacks.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">💸</div>
+          <h4>Completely free</h4>
+          <p>No per-seat pricing, no trials, no paywalls. Designed specifically so student orgs don't need a budget line for scheduling.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">⚡</div>
+          <h4>Fast and lightweight</h4>
+          <p>Powered by Vite and React, it loads instantly and works smoothly on both desktop and mobile.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎓</div>
+          <h4>Foster-specific</h4>
+          <p>Scoped intentionally for the UW MBA cohort — not a generic tool trying to be everything to everyone.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <section>
+    <div class="stack-section">
+      <p class="section-label">Tech Stack</p>
+      <h2 class="section-title">What it's built with</h2>
+      <p class="section-body">
+        A modern frontend stack with a managed backend — chosen to minimize infrastructure overhead while keeping the codebase clean and maintainable.
+      </p>
+      <div class="stack-pills">
+        <span class="pill"><span class="pill-dot" style="background:#3178c6"></span>TypeScript</span>
+        <span class="pill"><span class="pill-dot" style="background:#61dafb"></span>React</span>
+        <span class="pill"><span class="pill-dot" style="background:#646cff"></span>Vite</span>
+        <span class="pill"><span class="pill-dot" style="background:#38bdf8"></span>Tailwind CSS</span>
+        <span class="pill"><span class="pill-dot" style="background:#3ecf8e"></span>Supabase</span>
+        <span class="pill"><span class="pill-dot" style="background:#a78bfa"></span>Lovable</span>
+        <span class="pill"><span class="pill-dot" style="background:#f69220"></span>Playwright</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUILT BY -->
+  <section class="built-by-section">
+    <p class="section-label">The Builder</p>
+    <h2 class="section-title">Built by Sarrah Renfro</h2>
+    <p class="section-body">
+      Sarrah is a full-time MBA candidate at UW Foster (Class of 2027), concentrating in Product Management. She built Team Sync Hub as a practical solution for the MBAA in her role as Executive VP of Communications — because the best products are often the ones you build for yourself.
+    </p>
+    <div class="built-by-links">
+      <a href="https://sarrahrenfro.com" target="_blank" rel="noopener">sarrahrenfro.com</a>
+      <a href="https://github.com/sarenfro" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://sarrahssandbox.substack.com" target="_blank" rel="noopener">Sarrah's Sandbox</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>Team Sync Hub</span>
+    <span class="divider">·</span>
+    <a href="https://uwteamsynchub.lovable.app" target="_blank" rel="noopener">Live App</a>
+    <span class="divider">·</span>
+    <a href="https://github.com/sarenfro/team-sync-hub" target="_blank" rel="noopener">GitHub</a>
+    <span class="divider">·</span>
+    <span>UW Foster School of Business</span>
+  </footer>
+
+</body>
+</html>
