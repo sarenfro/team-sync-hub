@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     // Get bookings for this date
     const { data: bookings } = await supabase
       .from("bookings")
-      .select("meeting_time, team_member_id, booker_name")
+      .select("meeting_time, team_member_id")
       .eq("meeting_date", date)
       .eq("status", "confirmed");
 
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
           color_index: member.color_index,
           time: booking.meeting_time,
           source: "booking",
-          title: `Meeting with ${booking.booker_name}`,
+          title: "Busy",
         });
       }
     }
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
             color_index: member.color_index,
             time: ib.time,
             source: "ical",
-            title: ib.title,
+            title: "Busy",
           });
         }
       } catch (err) {
