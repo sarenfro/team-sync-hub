@@ -5,10 +5,13 @@ import TeamMemberSelect, { type TeamMember } from "@/components/booking/TeamMemb
 import DateTimePicker from "@/components/booking/DateTimePicker";
 import BookingForm from "@/components/booking/BookingForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
+import ScheduleView from "@/components/booking/ScheduleView";
+import { Calendar, CalendarCheck } from "lucide-react";
 
 type Step = "select-member" | "select-datetime" | "enter-details" | "confirmed";
-
+type PageView = "booking" | "schedule";
 const Index = () => {
+  const [pageView, setPageView] = useState<PageView>("booking");
   const [step, setStep] = useState<Step>("select-member");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<TeamMember[]>([]);
@@ -97,45 +100,77 @@ const Index = () => {
       <div className="mx-auto max-w-4xl px-4 py-6">
         <BookingHeader teamName="Book a Meeting" />
 
+        {/* View toggle tabs */}
+        <div className="mt-4 flex justify-center">
+          <div className="flex border border-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setPageView("booking")}
+              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                pageView === "booking"
+                  ? "bg-booking-hero text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CalendarCheck className="h-4 w-4" /> Book
+            </button>
+            <button
+              onClick={() => setPageView("schedule")}
+              className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                pageView === "schedule"
+                  ? "bg-booking-hero text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Calendar className="h-4 w-4" /> Schedule
+            </button>
+          </div>
+        </div>
+
         <div className="mt-6">
-          {step === "select-member" && (
-            <TeamMemberSelect
-              members={members}
-              selectedIds={selectedMembers.map((m) => m.id)}
-              onToggle={handleMemberToggle}
-              onSelectAll={handleSelectAll}
-              onConfirm={handleConfirmSelection}
-            />
-          )}
+          {pageView === "schedule" ? (
+            <ScheduleView onBack={() => setPageView("booking")} />
+          ) : (
+            <>
+              {step === "select-member" && (
+                <TeamMemberSelect
+                  members={members}
+                  selectedIds={selectedMembers.map((m) => m.id)}
+                  onToggle={handleMemberToggle}
+                  onSelectAll={handleSelectAll}
+                  onConfirm={handleConfirmSelection}
+                />
+              )}
 
-          {step === "select-datetime" && selectedMembers.length > 0 && (
-            <DateTimePicker
-              members={selectedMembers}
-              onSelect={handleDateTimeSelect}
-              onBack={() => setStep("select-member")}
-            />
-          )}
+              {step === "select-datetime" && selectedMembers.length > 0 && (
+                <DateTimePicker
+                  members={selectedMembers}
+                  onSelect={handleDateTimeSelect}
+                  onBack={() => setStep("select-member")}
+                />
+              )}
 
-          {step === "enter-details" && selectedMembers.length > 0 && selectedDate && selectedTime && (
-            <BookingForm
-              members={selectedMembers}
-              date={selectedDate}
-              time={selectedTime}
-              onSubmit={handleFormSubmit}
-              onBack={() => setStep("select-datetime")}
-              isSubmitting={isSubmitting}
-            />
-          )}
+              {step === "enter-details" && selectedMembers.length > 0 && selectedDate && selectedTime && (
+                <BookingForm
+                  members={selectedMembers}
+                  date={selectedDate}
+                  time={selectedTime}
+                  onSubmit={handleFormSubmit}
+                  onBack={() => setStep("select-datetime")}
+                  isSubmitting={isSubmitting}
+                />
+              )}
 
-          {step === "confirmed" && selectedMembers.length > 0 && selectedDate && selectedTime && (
-            <BookingConfirmation
-              members={selectedMembers}
-              date={selectedDate}
-              time={selectedTime}
-              bookerName={bookerName}
-              bookerEmail={bookerEmail}
-              onReset={handleReset}
-            />
+              {step === "confirmed" && selectedMembers.length > 0 && selectedDate && selectedTime && (
+                <BookingConfirmation
+                  members={selectedMembers}
+                  date={selectedDate}
+                  time={selectedTime}
+                  bookerName={bookerName}
+                  bookerEmail={bookerEmail}
+                  onReset={handleReset}
+                />
+              )}
+            </>
           )}
         </div>
 
