@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     const { data: memberRows } = await supabase
       .from("team_members")
-      .select("id, name, calendar_type, calendar_id")
+      .select("id, name, calendar_type, calendar_id, color_index")
       .in("id", memberIds);
 
     const members = memberRows ?? [];
@@ -84,6 +84,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Build zoom links for all members
+    const zoomLinks = members
+      .filter((m) => m.calendar_id && m.calendar_id.endsWith("@uw.edu"))
+      .map((m) => {
+        const uwnetid = m.calendar_id!.split("@")[0];
+        return { name: m.name.split(" ")[0], url: `https://washington.zoom.us/my/${uwnetid}` };
+      });
+
     // Send ICS email to each team member
     for (const member of members) {
       if (member.calendar_id) {
@@ -96,6 +104,7 @@ Deno.serve(async (req) => {
           meetingTime: body.meeting_time,
           durationMinutes: body.duration_minutes,
           notes: body.notes,
+          zoomLinks,
         });
       }
     }
@@ -112,6 +121,7 @@ Deno.serve(async (req) => {
       durationMinutes: body.duration_minutes,
       notes: body.notes,
       isBookerConfirmation: true,
+      zoomLinks,
     });
 
     return new Response(
@@ -137,6 +147,7 @@ async function sendIcsEmail(params: {
   durationMinutes: number;
   notes?: string;
   isBookerConfirmation?: boolean;
+  zoomLinks?: { name: string; url: string }[];
 }): Promise<void> {
   const brevoApiKey = Deno.env.get("BREVO_API_KEY");
   if (!brevoApiKey) {
