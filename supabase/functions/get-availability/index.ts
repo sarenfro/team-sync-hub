@@ -131,12 +131,17 @@ function parseIcalForDate(icalText: string, date: string): string[] {
 
   while ((match = eventRegex.exec(unfolded)) !== null) {
     const block = match[1];
+
+    // Skip events marked as "Free" (TRANSP:TRANSPARENT)
+    if (/TRANSP:\s*TRANSPARENT/i.test(block)) continue;
+
     const dtstart = extractDtLine(block, "DTSTART");
     const dtend = extractDtLine(block, "DTEND");
 
     if (!dtstart) continue;
 
     if (dtstart.isDate) {
+      // Also skip all-day events that are transparent
       const endDate = dtend?.rawDate ?? dtstart.rawDate;
       if (dateInRange(date, dtstart.rawDate, endDate)) {
         return ALL_TIMES;
