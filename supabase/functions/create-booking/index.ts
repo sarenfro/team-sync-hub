@@ -152,6 +152,7 @@ async function sendIcsEmail(params: {
   notes?: string;
   isBookerConfirmation?: boolean;
   zoomLinks?: { name: string; url: string }[];
+  cancelUrl?: string;
 }): Promise<void> {
   const brevoApiKey = Deno.env.get("BREVO_API_KEY");
   if (!brevoApiKey) {
