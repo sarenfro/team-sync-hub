@@ -13,10 +13,10 @@ const AdminLogin = () => {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) navigate("/dashboard");
+      if (session?.user) navigate("/member-profile");
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) navigate("/dashboard");
+      if (session?.user) navigate("/member-profile");
     });
     return () => subscription.unsubscribe();
   }, [navigate]);
