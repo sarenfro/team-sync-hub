@@ -193,6 +193,7 @@ async function sendIcsEmail(params: {
         ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
       </div>
       <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
+      ${params.cancelUrl ? `<p style="margin-top:16px;font-size:13px;color:#666;">Need to cancel? <a href="${params.cancelUrl}" style="color:#cc0000;">Cancel this meeting</a></p>` : ""}
     `
     : `
       <h2>Hi ${params.toName},</h2>
