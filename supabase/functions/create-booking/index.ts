@@ -13,7 +13,6 @@ interface BookingRequest {
   meeting_date: string;
   meeting_time: string;
   duration_minutes: number;
-  app_url?: string;
 }
 
 Deno.serve(async (req) => {
@@ -61,9 +60,6 @@ Deno.serve(async (req) => {
 
     const members = memberRows ?? [];
 
-    const cancellationToken = crypto.randomUUID();
-    const icsUid = crypto.randomUUID();
-
     const bookingInserts = members.map((m) => ({
       team_member_id: m.id,
       booker_name: body.booker_name,
@@ -73,8 +69,6 @@ Deno.serve(async (req) => {
       meeting_time: body.meeting_time,
       duration_minutes: body.duration_minutes,
       status: "confirmed",
-      cancellation_token: cancellationToken,
-      ics_uid: icsUid,
     }));
 
     const { error: insertError } = await supabase.from("bookings").insert(bookingInserts);
@@ -114,8 +108,6 @@ Deno.serve(async (req) => {
 
     // Send confirmation email to the booker
     const memberNames = members.map((m) => m.name.split(" ")[0]).join(" & ");
-    const appUrl = Deno.env.get("APP_URL") || body.app_url || "";
-    const cancelUrl = appUrl ? `${appUrl}/cancel?token=${cancellationToken}` : "";
     await sendIcsEmail({
       toEmail: body.booker_email,
       toName: body.booker_name,
@@ -127,10 +119,9 @@ Deno.serve(async (req) => {
       notes: body.notes,
       isBookerConfirmation: true,
       zoomLinks,
-      cancelUrl,
     });
 
-    return new Response(JSON.stringify({ success: true, cancellation_token: cancellationToken }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -154,7 +145,6 @@ async function sendIcsEmail(params: {
   notes?: string;
   isBookerConfirmation?: boolean;
   zoomLinks?: { name: string; url: string }[];
-  cancelUrl?: string;
 }): Promise<void> {
   const brevoApiKey = Deno.env.get("BREVO_API_KEY");
   if (!brevoApiKey) {
@@ -195,7 +185,6 @@ async function sendIcsEmail(params: {
         ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
       </div>
       <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
-      ${params.cancelUrl ? `<p style="margin-top:16px;font-size:13px;color:#666;">Need to cancel? <a href="${params.cancelUrl}" style="color:#cc0000;">Cancel this meeting</a></p>` : ""}
     `
     : `
       <h2>Hi ${params.toName},</h2>
