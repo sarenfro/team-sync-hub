@@ -18,7 +18,6 @@ interface MemberData {
   meeting_duration: number;
 }
 
-const DURATION_OPTIONS = [15, 30, 45, 60];
 
 const MemberProfile = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -209,18 +208,6 @@ const MemberProfile = () => {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Meeting Duration</label>
-              <select
-                value={form.meeting_duration}
-                onChange={(e) => setForm({ ...form, meeting_duration: parseInt(e.target.value) })}
-                className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground"
-              >
-                {DURATION_OPTIONS.map((d) => (
-                  <option key={d} value={d}>{d} minutes</option>
-                ))}
-              </select>
-            </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Calendar iCal URL</label>
