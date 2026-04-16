@@ -134,6 +134,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_event_type_id_fkey"
+            columns: ["event_type_id"]
+            isOneToOne: false
+            referencedRelation: "event_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
@@ -229,30 +243,6 @@ export type Database = {
         }
         Relationships: []
       }
-      suppressed_emails: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          metadata: Json | null
-          reason: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          metadata?: Json | null
-          reason: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          metadata?: Json | null
-          reason?: string
-        }
-        Relationships: []
-      }
       event_types: {
         Row: {
           assignment_strategy: string
@@ -311,7 +301,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "event_types_owner_team_id_fkey"
+            columns: ["owner_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       google_calendar_tokens: {
         Row: {
@@ -347,7 +345,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_tokens_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -419,6 +425,45 @@ export type Database = {
           title?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "routing_forms_event_type_id_fkey"
+            columns: ["event_type_id"]
+            isOneToOne: false
+            referencedRelation: "event_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routing_forms_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppressed_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          metadata: Json | null
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+        }
         Relationships: []
       }
       team_admins: {
@@ -443,12 +488,20 @@ export type Database = {
           team_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "team_admins_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_members: {
         Row: {
           calendar_id: string | null
-          calendar_type: string | null
+          calendar_type: string
           color_index: number
           created_at: string
           email: string | null
@@ -466,7 +519,7 @@ export type Database = {
         }
         Insert: {
           calendar_id?: string | null
-          calendar_type?: string | null
+          calendar_type: string
           color_index?: number
           created_at?: string
           email?: string | null
@@ -484,7 +537,7 @@ export type Database = {
         }
         Update: {
           calendar_id?: string | null
-          calendar_type?: string | null
+          calendar_type?: string
           color_index?: number
           created_at?: string
           email?: string | null
@@ -500,7 +553,15 @@ export type Database = {
           zoom_meeting_id?: string | null
           zoom_passcode?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teams: {
         Row: {
@@ -518,7 +579,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           name: string
-          password_hash: string
+          password_hash?: string
           slug: string
         }
         Update: {
@@ -537,10 +598,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_team_admin: {
-        Args: { _team_id: string; _user_id: string }
-        Returns: boolean
-      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -548,6 +605,10 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      is_team_admin: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
       }
       move_to_dlq: {
         Args: {
