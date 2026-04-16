@@ -44,7 +44,7 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
   const [loadingTimes, setLoadingTimes] = useState(false);
 
   const effectiveDuration = Math.max(...members.map((m) => m.meetingDuration));
-  const durationOptions = ALL_DURATIONS.filter((d) => d <= effectiveDuration);
+  const durationOptions = ALL_DURATIONS;
   const [selectedDuration, setSelectedDuration] = useState(effectiveDuration);
 
   const calendarDays = useMemo(() => {
