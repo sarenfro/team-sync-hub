@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
     const memberIds = bookings.map((b: { team_member_id: string }) => b.team_member_id).filter(Boolean);
     const { data: members } = await supabase
       .from("team_members")
-      .select("name, email")
+      .select("name, email, calendar_id")
       .in("id", memberIds);
 
     const memberLabel = (members ?? []).length === 0
@@ -167,20 +167,18 @@ Deno.serve(async (req) => {
 
     const meetingTitle = `Meeting with ${memberLabel}`;
 
-    // Generate METHOD:CANCEL ICS if we have the UID
-    let cancelIcs: string | undefined;
-    if (booking.ics_uid) {
-      cancelIcs = generateCancelICS({
-        uid: booking.ics_uid,
-        title: meetingTitle,
-        dateStr: booking.meeting_date,
-        timeStr: booking.meeting_time,
-        durationMinutes: booking.duration_minutes || 30,
-        bookerName: booking.booker_name,
-        bookerEmail: booking.booker_email,
-        organizerName: memberLabel,
-      });
-    }
+    // Generate METHOD:CANCEL ICS — use stored ics_uid if available so it
+    // matches the original event; otherwise generate a fresh UID (best-effort)
+    const cancelIcs = generateCancelICS({
+      uid: booking.ics_uid || crypto.randomUUID(),
+      title: meetingTitle,
+      dateStr: booking.meeting_date,
+      timeStr: booking.meeting_time,
+      durationMinutes: booking.duration_minutes || 30,
+      bookerName: booking.booker_name,
+      bookerEmail: booking.booker_email,
+      organizerName: memberLabel,
+    });
 
     // Cancellation email to booker
     const bookerHtml = `
@@ -209,8 +207,9 @@ Deno.serve(async (req) => {
     });
 
     // Notify each team member
-    for (const member of (members ?? []) as { name: string; email: string | null }[]) {
-      if (!member.email) continue;
+    for (const member of (members ?? []) as { name: string; email: string | null; calendar_id: string | null }[]) {
+      const memberEmail = member.email || member.calendar_id;
+      if (!memberEmail) continue;
 
       const memberHtml = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a2e;">
@@ -229,7 +228,7 @@ Deno.serve(async (req) => {
       `;
 
       await sendBrevoEmail({
-        toEmail: member.email,
+        toEmail: memberEmail,
         toName: member.name,
         subject: `Cancelled: ${booking.booker_name}'s meeting on ${booking.meeting_date}`,
         htmlContent: memberHtml,
