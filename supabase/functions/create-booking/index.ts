@@ -61,6 +61,10 @@ Deno.serve(async (req) => {
 
     const members = memberRows ?? [];
 
+    const cancellationToken = crypto.randomUUID();
+    const appUrl = Deno.env.get("APP_URL") || body.app_url || "";
+    const cancelUrl = appUrl ? `${appUrl}/cancel?token=${cancellationToken}` : "";
+
     const bookingInserts = members.map((m) => ({
       team_member_id: m.id,
       booker_name: body.booker_name,
@@ -70,6 +74,7 @@ Deno.serve(async (req) => {
       meeting_time: body.meeting_time,
       duration_minutes: body.duration_minutes,
       status: "confirmed",
+      cancellation_token: cancellationToken,
     }));
 
     const { error: insertError } = await supabase.from("bookings").insert(bookingInserts);
