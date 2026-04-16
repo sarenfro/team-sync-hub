@@ -179,9 +179,12 @@ const Index = () => {
           )}
         </div>
 
-        <div className="mt-12 text-center space-y-1">
+        <div className="mt-12 text-center space-y-3">
           <p className="text-xs text-muted-foreground">Powered by Team Scheduler</p>
-          <a href="/admin-login" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+          <a
+            href="/admin-login"
+            className="inline-flex items-center justify-center rounded-full border border-border px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+          >
             Admin Login
           </a>
         </div>
