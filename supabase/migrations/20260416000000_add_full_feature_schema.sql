@@ -200,9 +200,12 @@ CREATE TRIGGER update_event_types_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Add event_type_id FK now that the table exists
-ALTER TABLE public.bookings
-  ADD CONSTRAINT IF NOT EXISTS bookings_event_type_id_fkey
-  FOREIGN KEY (event_type_id) REFERENCES public.event_types(id);
+DO $$ BEGIN
+  ALTER TABLE public.bookings
+    ADD CONSTRAINT bookings_event_type_id_fkey
+    FOREIGN KEY (event_type_id) REFERENCES public.event_types(id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 7. availability_schedules table (new)
 CREATE TABLE IF NOT EXISTS public.availability_schedules (
