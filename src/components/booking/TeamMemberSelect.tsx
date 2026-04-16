@@ -9,6 +9,9 @@ export interface TeamMember {
   calendarType: "google" | "outlook";
   colorIndex: number;
   calendarId?: string;
+  zoomMeetingId?: string;
+  zoomPasscode?: string;
+  meetingDuration: number;
 }
 
 interface TeamMemberSelectProps {

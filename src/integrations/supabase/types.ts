@@ -14,18 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      availability_overrides: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          id: string
+          is_available: boolean
+          override_date: string
+          start_time: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          is_available?: boolean
+          override_date: string
+          start_time?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          is_available?: boolean
+          override_date?: string
+          start_time?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      availability_schedules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_available: boolean
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time?: string
+          id?: string
+          is_available?: boolean
+          start_time?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_available?: boolean
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           booker_email: string
           booker_name: string
           calendar_event_id: string | null
+          cancellation_token: string | null
+          cancelled_at: string | null
           created_at: string
           duration_minutes: number
+          event_type_id: string | null
+          ics_uid: string | null
           id: string
           meeting_date: string
           meeting_time: string
           notes: string | null
           status: string
+          team_id: string | null
           team_member_id: string | null
           updated_at: string
         }
@@ -33,13 +98,18 @@ export type Database = {
           booker_email: string
           booker_name: string
           calendar_event_id?: string | null
+          cancellation_token?: string | null
+          cancelled_at?: string | null
           created_at?: string
           duration_minutes?: number
+          event_type_id?: string | null
+          ics_uid?: string | null
           id?: string
           meeting_date: string
           meeting_time: string
           notes?: string | null
           status?: string
+          team_id?: string | null
           team_member_id?: string | null
           updated_at?: string
         }
@@ -47,13 +117,18 @@ export type Database = {
           booker_email?: string
           booker_name?: string
           calendar_event_id?: string | null
+          cancellation_token?: string | null
+          cancelled_at?: string | null
           created_at?: string
           duration_minutes?: number
+          event_type_id?: string | null
+          ics_uid?: string | null
           id?: string
           meeting_date?: string
           meeting_time?: string
           notes?: string | null
           status?: string
+          team_id?: string | null
           team_member_id?: string | null
           updated_at?: string
         }
@@ -178,39 +253,282 @@ export type Database = {
         }
         Relationships: []
       }
-      team_members: {
+      event_types: {
         Row: {
-          calendar_id: string | null
-          calendar_type: string
-          color_index: number
+          assignment_strategy: string
+          buffer_minutes: number
+          color: string
           created_at: string
+          description: string | null
+          duration_minutes: number
           id: string
           is_active: boolean
-          name: string
-          role: string | null
+          location_type: string | null
+          location_value: string | null
+          max_days_advance: number
+          min_notice_minutes: number
+          owner_team_id: string | null
+          owner_user_id: string | null
+          slug: string
+          title: string
           updated_at: string
         }
         Insert: {
-          calendar_id?: string | null
-          calendar_type: string
-          color_index?: number
+          assignment_strategy?: string
+          buffer_minutes?: number
+          color?: string
           created_at?: string
+          description?: string | null
+          duration_minutes?: number
           id?: string
           is_active?: boolean
-          name: string
-          role?: string | null
+          location_type?: string | null
+          location_value?: string | null
+          max_days_advance?: number
+          min_notice_minutes?: number
+          owner_team_id?: string | null
+          owner_user_id?: string | null
+          slug: string
+          title: string
           updated_at?: string
         }
         Update: {
-          calendar_id?: string | null
-          calendar_type?: string
-          color_index?: number
+          assignment_strategy?: string
+          buffer_minutes?: number
+          color?: string
           created_at?: string
+          description?: string | null
+          duration_minutes?: number
           id?: string
           is_active?: boolean
+          location_type?: string | null
+          location_value?: string | null
+          max_days_advance?: number
+          min_notice_minutes?: number
+          owner_team_id?: string | null
+          owner_user_id?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      google_calendar_tokens: {
+        Row: {
+          access_token: string
+          calendar_id: string
+          created_at: string
+          id: string
+          refresh_token: string
+          team_member_id: string | null
+          token_expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          calendar_id?: string
+          created_at?: string
+          id?: string
+          refresh_token: string
+          team_member_id?: string | null
+          token_expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          calendar_id?: string
+          created_at?: string
+          id?: string
+          refresh_token?: string
+          team_member_id?: string | null
+          token_expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          slug: string | null
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          slug?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          slug?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      routing_forms: {
+        Row: {
+          created_at: string
+          event_type_id: string | null
+          id: string
+          is_active: boolean
+          owner_user_id: string | null
+          questions: Json
+          routing_rules: Json
+          team_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_type_id?: string | null
+          id?: string
+          is_active?: boolean
+          owner_user_id?: string | null
+          questions?: Json
+          routing_rules?: Json
+          team_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_type_id?: string | null
+          id?: string
+          is_active?: boolean
+          owner_user_id?: string | null
+          questions?: Json
+          routing_rules?: Json
+          team_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_admins: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          calendar_id: string | null
+          calendar_type: string | null
+          color_index: number
+          created_at: string
+          email: string | null
+          html_link: string | null
+          ical_url: string | null
+          id: string
+          is_active: boolean
+          meeting_duration: number
+          name: string
+          role: string | null
+          team_id: string | null
+          updated_at: string
+          zoom_meeting_id: string | null
+          zoom_passcode: string | null
+        }
+        Insert: {
+          calendar_id?: string | null
+          calendar_type?: string | null
+          color_index?: number
+          created_at?: string
+          email?: string | null
+          html_link?: string | null
+          ical_url?: string | null
+          id?: string
+          is_active?: boolean
+          meeting_duration?: number
+          name: string
+          role?: string | null
+          team_id?: string | null
+          updated_at?: string
+          zoom_meeting_id?: string | null
+          zoom_passcode?: string | null
+        }
+        Update: {
+          calendar_id?: string | null
+          calendar_type?: string | null
+          color_index?: number
+          created_at?: string
+          email?: string | null
+          html_link?: string | null
+          ical_url?: string | null
+          id?: string
+          is_active?: boolean
+          meeting_duration?: number
           name?: string
           role?: string | null
+          team_id?: string | null
           updated_at?: string
+          zoom_meeting_id?: string | null
+          zoom_passcode?: string | null
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          claim_token: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          password_hash: string
+          slug: string
+        }
+        Insert: {
+          claim_token?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          password_hash: string
+          slug: string
+        }
+        Update: {
+          claim_token?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          password_hash?: string
+          slug?: string
         }
         Relationships: []
       }
@@ -219,6 +537,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_team_admin: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

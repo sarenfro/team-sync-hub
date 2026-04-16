@@ -5,12 +5,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ALL_TIMES = [
-  "9:00am", "9:30am", "10:00am", "10:30am",
-  "11:00am", "11:30am", "12:00pm", "12:30pm",
-  "1:00pm", "1:30pm", "2:00pm", "2:30pm",
-  "3:00pm", "3:30pm", "4:00pm", "4:30pm",
-];
+function minsToSlot(totalMins: number): string {
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  const period = h < 12 ? "am" : "pm";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${m.toString().padStart(2, "0")}${period}`;
+}
+
+function generateSlots(durationMins: number): string[] {
+  const slots: string[] = [];
+  const startMins = 9 * 60;  // 9:00am
+  const endMins = 17 * 60;   // 5:00pm
+  for (let m = startMins; m + durationMins <= endMins; m += durationMins) {
+    slots.push(minsToSlot(m));
+  }
+  return slots;
+}
 
 function icalEnvKey(memberName: string): string {
   return `ICAL_${memberName.split(" ")[0].toUpperCase()}`;
@@ -24,6 +35,9 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const date = url.searchParams.get("date");
+
+    const duration = Math.max(15, parseInt(url.searchParams.get("duration") ?? "30"));
+    const ALL_TIMES = generateSlots(duration);
 
     const memberIdsParam = url.searchParams.get("member_ids") ?? url.searchParams.get("member_id");
     const memberIds = memberIdsParam
@@ -80,7 +94,7 @@ Deno.serve(async (req) => {
       const envKey = icalEnvKey(member.name);
       const icalUrl = Deno.env.get(envKey);
         if (icalUrl) {
-          const busy = await getIcalBusyTimes(icalUrl, date);
+          const busy = await getIcalBusyTimes(icalUrl, date, ALL_TIMES, duration);
           busySetsPerMember.push(new Set(busy));
         }
     }
@@ -108,7 +122,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function getIcalBusyTimes(icalUrl: string, date: string): Promise<string[]> {
+async function getIcalBusyTimes(icalUrl: string, date: string, allTimes: string[], duration: number): Promise<string[]> {
   try {
     const res = await fetch(icalUrl);
     if (!res.ok) {
@@ -116,14 +130,14 @@ async function getIcalBusyTimes(icalUrl: string, date: string): Promise<string[]
       return [];
     }
     const text = await res.text();
-    return parseIcalForDate(text, date);
+    return parseIcalForDate(text, date, allTimes, duration);
   } catch (err) {
     console.error("iCal fetch error:", err);
     return [];
   }
 }
 
-function parseIcalForDate(icalText: string, date: string): string[] {
+function parseIcalForDate(icalText: string, date: string, allTimes: string[], duration: number): string[] {
   const busy: string[] = [];
   const unfolded = icalText.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
   const eventRegex = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
@@ -144,7 +158,7 @@ function parseIcalForDate(icalText: string, date: string): string[] {
       // Also skip all-day events that are transparent
       const endDate = dtend?.rawDate ?? dtstart.rawDate;
       if (dateInRange(date, dtstart.rawDate, endDate)) {
-        return ALL_TIMES;
+        return allTimes;
       }
       continue;
     }
@@ -163,9 +177,9 @@ function parseIcalForDate(icalText: string, date: string): string[] {
       ? (dtend.localHour ?? 0) * 60 + (dtend.localMinute ?? 0)
       : startMins + 30;
 
-    for (const slot of ALL_TIMES) {
+    for (const slot of allTimes) {
       const slotMins = slotToMinutes(slot);
-      if (slotMins < endMins && slotMins + 30 > startMins) {
+      if (slotMins < endMins && slotMins + duration > startMins) {
         busy.push(slot);
       }
     }

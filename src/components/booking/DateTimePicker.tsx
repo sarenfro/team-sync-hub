@@ -41,6 +41,8 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
 
+  const effectiveDuration = Math.max(...members.map((m) => m.meetingDuration));
+
   const calendarDays = useMemo(() => {
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
@@ -66,7 +68,7 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
       const memberIds = members.map((m) => m.id).join(",");
 
       try {
-        const params = new URLSearchParams({ date: dateStr, member_ids: memberIds });
+        const params = new URLSearchParams({ date: dateStr, member_ids: memberIds, duration: String(effectiveDuration) });
 
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-availability?${params.toString()}`,
@@ -134,18 +136,18 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
               ))}
             </div>
             <p className="text-sm text-muted-foreground">{memberLabel}</p>
-            <h2 className="text-xl font-bold text-foreground">30 Minute Meeting</h2>
+            <h2 className="text-xl font-bold text-foreground">{effectiveDuration} Minute Meeting</h2>
           </div>
         ) : (
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{memberLabel}</p>
-            <h2 className="text-xl font-bold text-foreground">30 Minute Meeting</h2>
+            <h2 className="text-xl font-bold text-foreground">{effectiveDuration} Minute Meeting</h2>
           </div>
         )}
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center justify-center h-5 w-5 rounded bg-muted">🕐</span>
-          30 min
+          {effectiveDuration} min
         </div>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

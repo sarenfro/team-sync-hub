@@ -33,6 +33,9 @@ const Index = () => {
             calendarType: m.calendar_type as "google" | "outlook",
             colorIndex: m.color_index,
             calendarId: m.calendar_id ?? undefined,
+            zoomMeetingId: m.zoom_meeting_id ?? undefined,
+            zoomPasscode: m.zoom_passcode ?? undefined,
+            meetingDuration: m.meeting_duration ?? 30,
           })),
         );
       }
@@ -67,6 +70,7 @@ const Index = () => {
     setBookerEmail(data.email);
 
     try {
+      const effectiveDuration = Math.max(...selectedMembers.map((m) => m.meetingDuration));
       await supabase.functions.invoke("create-booking", {
         body: {
           team_member_ids: selectedMembers.map((m) => m.id),
@@ -75,7 +79,7 @@ const Index = () => {
           notes: data.notes,
           meeting_date: selectedDate!.toISOString().split("T")[0],
           meeting_time: selectedTime!,
-          duration_minutes: 30,
+          duration_minutes: effectiveDuration,
         },
       });
 

@@ -11,6 +11,7 @@ interface BookingConfirmationProps {
   time: string;
   bookerName: string;
   bookerEmail: string;
+  cancellationToken?: string | null;
   onReset: () => void;
 }
 
@@ -21,12 +22,40 @@ function formatMemberNames(members: TeamMember[]): string {
   return firsts.slice(0, -1).join(", ") + " & " + firsts[firsts.length - 1];
 }
 
-function getZoomLinks(members: TeamMember[]): { name: string; url: string }[] {
+interface ZoomInfo {
+  name: string;
+  url: string;
+  meetingId?: string;
+  passcode?: string;
+}
+
+function formatMeetingId(raw: string): string {
+  // Strip non-digits then format as "XXX XXX XXXX" or "XXXX XXXX XXXX"
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  if (digits.length === 11) return `${digits.slice(0, 3)} ${digits.slice(3, 7)} ${digits.slice(7)}`;
+  // fallback: group into chunks of 3
+  return digits.replace(/(\d{3})(?=\d)/g, "$1 ").trim();
+}
+
+function getZoomInfos(members: TeamMember[]): ZoomInfo[] {
   return members
-    .filter((m) => m.calendarId && m.calendarId.endsWith("@uw.edu"))
+    .filter((m) => m.zoomMeetingId || (m.calendarId && m.calendarId.endsWith("@uw.edu")))
     .map((m) => {
+      const firstName = m.name.split(" ")[0];
+      if (m.zoomMeetingId) {
+        const digits = m.zoomMeetingId.replace(/\D/g, "");
+        const url = `https://washington.zoom.us/j/${digits}${m.zoomPasscode ? `?pwd=${encodeURIComponent(m.zoomPasscode)}` : ""}`;
+        return {
+          name: firstName,
+          url,
+          meetingId: formatMeetingId(m.zoomMeetingId),
+          passcode: m.zoomPasscode,
+        };
+      }
+      // fallback: personal room from UW email
       const uwnetid = m.calendarId!.split("@")[0];
-      return { name: m.name.split(" ")[0], url: `https://washington.zoom.us/my/${uwnetid}` };
+      return { name: firstName, url: `https://washington.zoom.us/my/${uwnetid}` };
     });
 }
 
@@ -35,8 +64,9 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
 
   const meetingDate = format(date, "yyyy-MM-dd");
   const memberLabel = formatMemberNames(members);
-  const zoomLinks = getZoomLinks(members);
+  const zoomInfos = getZoomInfos(members);
   const meetingTitle = `Meeting with ${memberLabel}`;
+  const duration = Math.max(...members.map((m) => m.meetingDuration));
 
   const handleDownloadICS = async () => {
     setIsDownloading(true);
@@ -47,7 +77,7 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
           booker_email: bookerEmail,
           meeting_date: meetingDate,
           meeting_time: time,
-          duration_minutes: 30,
+          duration_minutes: duration,
           team_member_name: memberLabel,
         },
       });
@@ -72,7 +102,7 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
 
   const getGoogleCalendarUrl = () => {
     const startDt = parseDateTime(meetingDate, time);
-    const endDt = new Date(startDt.getTime() + 30 * 60000);
+    const endDt = new Date(startDt.getTime() + duration * 60000);
     const fmt = (d: Date) =>
       d
         .toISOString()
@@ -89,7 +119,7 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
 
   const getOutlookCalendarUrl = () => {
     const startDt = parseDateTime(meetingDate, time);
-    const endDt = new Date(startDt.getTime() + 30 * 60000);
+    const endDt = new Date(startDt.getTime() + duration * 60000);
     const params = new URLSearchParams({
       path: "/calendar/action/compose",
       rru: "addevent",
@@ -115,7 +145,7 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 text-left space-y-4">
-        <h3 className="font-semibold text-foreground">30 Minute Meeting</h3>
+        <h3 className="font-semibold text-foreground">{duration} Minute Meeting</h3>
 
         <div className="space-y-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-3">
@@ -128,22 +158,33 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
           </div>
           <div className="flex items-center gap-3">
             <Clock className="h-4 w-4 flex-shrink-0 text-booking-hero" />
-            <span>{time} (30 minutes)</span>
+            <span>{time} ({duration} minutes)</span>
           </div>
-          {zoomLinks.length > 0 && (
+          {zoomInfos.length > 0 && (
             <div className="flex items-start gap-3">
               <Video className="h-4 w-4 flex-shrink-0 text-booking-hero mt-0.5" />
-              <div className="space-y-1">
-                {zoomLinks.map((z) => (
-                  <a
-                    key={z.url}
-                    href={z.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-booking-hero underline hover:opacity-80"
-                  >
-                    {zoomLinks.length > 1 ? `${z.name}'s Zoom` : "Join via Zoom"}
-                  </a>
+              <div className="space-y-3">
+                {zoomInfos.map((z) => (
+                  <div key={z.url} className="space-y-1">
+                    <a
+                      href={z.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block font-medium text-booking-hero underline hover:opacity-80"
+                    >
+                      {zoomInfos.length > 1 ? `Join ${z.name}'s Zoom` : "Join Zoom Meeting"}
+                    </a>
+                    {z.meetingId && (
+                      <p className="text-xs text-muted-foreground">
+                        Meeting ID: <span className="font-mono">{z.meetingId}</span>
+                      </p>
+                    )}
+                    {z.passcode && (
+                      <p className="text-xs text-muted-foreground">
+                        Passcode: <span className="font-mono">{z.passcode}</span>
+                      </p>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

@@ -1,0 +1,2 @@
+ALTER TABLE public.team_members
+  ADD COLUMN IF NOT EXISTS meeting_duration INTEGER NOT NULL DEFAULT 30;

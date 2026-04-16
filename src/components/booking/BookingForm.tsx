@@ -33,6 +33,7 @@ const BookingForm = ({ members, date, time, onSubmit, onBack, isSubmitting }: Bo
   };
 
   const memberLabel = formatMemberNames(members);
+  const duration = Math.max(...members.map((m) => m.meetingDuration));
 
   return (
     <div
@@ -50,7 +51,7 @@ const BookingForm = ({ members, date, time, onSubmit, onBack, isSubmitting }: Bo
 
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">{memberLabel}</p>
-          <h2 className="text-xl font-bold text-foreground">30 Minute Meeting</h2>
+          <h2 className="text-xl font-bold text-foreground">{duration} Minute Meeting</h2>
         </div>
 
         <div className="space-y-3 text-sm text-muted-foreground">
