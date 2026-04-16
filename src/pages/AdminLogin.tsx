@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Home, Shield } from "lucide-react";
@@ -22,14 +23,11 @@ const AdminLogin = () => {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/member-profile`,
-      },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: `${window.location.origin}/member-profile`,
     });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    if (result.error) {
+      toast({ title: "Error", description: String(result.error), variant: "destructive" });
       setLoading(false);
     }
   };
