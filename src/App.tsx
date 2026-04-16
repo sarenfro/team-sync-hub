@@ -13,6 +13,7 @@ import Availability from "./pages/Availability.tsx";
 import BookPage from "./pages/BookPage.tsx";
 import PersonalBooking from "./pages/PersonalBooking.tsx";
 import Admin from "./pages/Admin.tsx";
+import AdminLogin from "./pages/AdminLogin.tsx";
 import AdminMembers from "./pages/AdminMembers.tsx";
 import AdminBookings from "./pages/AdminBookings.tsx";
 import Embed from "./pages/Embed.tsx";
@@ -50,6 +51,7 @@ const App = () => (
           {/* Team booking pages */}
           <Route path="/book/:slug" element={<BookPage />} />
           {/* Admin pages */}
+          <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/admin/:slug" element={<Admin />} />
           <Route path="/admin/:slug/members" element={<AdminMembers />} />
           <Route path="/admin/:slug/bookings" element={<AdminBookings />} />

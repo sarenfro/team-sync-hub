@@ -179,8 +179,11 @@ const Index = () => {
           )}
         </div>
 
-        <div className="mt-12 text-center">
+        <div className="mt-12 text-center space-y-1">
           <p className="text-xs text-muted-foreground">Powered by Team Scheduler</p>
+          <a href="/admin-login" className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+            Admin Login
+          </a>
         </div>
       </div>
     </div>

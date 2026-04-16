@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Copy, Check, Users, Calendar } from "lucide-react";
+import { Copy, Check, Users, Calendar, Home } from "lucide-react";
 import TeamAdminManager from "@/components/TeamAdminManager";
 
 interface Member {
@@ -168,6 +168,9 @@ const Admin = () => {
             <p className="text-sm text-muted-foreground">Admin Dashboard</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/")}>
+              <Home className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
               My Teams
             </Button>

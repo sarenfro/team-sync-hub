@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { Home } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -66,6 +67,9 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-8">
+        <Link to="/" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Home className="h-4 w-4" /> Back to Booking
+        </Link>
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-foreground">
             {isLogin ? "EC Member Login" : "Create Account"}

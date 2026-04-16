@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { ChevronLeft, Plus, Trash2, HelpCircle, AlertTriangle, CheckCircle, Loader2, Calendar } from "lucide-react";
+import { ChevronLeft, Plus, Trash2, HelpCircle, AlertTriangle, CheckCircle, Loader2, Calendar, Home } from "lucide-react";
 import { toast } from "sonner";
 import {
   Popover,
@@ -272,11 +272,16 @@ const AdminMembers = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to={`/admin/${slug}`}>
-            <ChevronLeft className="h-4 w-4" /> Back to Dashboard
-          </Link>
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button asChild variant="ghost" size="sm" className="-ml-2">
+            <Link to={`/admin/${slug}`}>
+              <ChevronLeft className="h-4 w-4" /> Back to Dashboard
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/"><Home className="h-4 w-4" /> Home</Link>
+          </Button>
+        </div>
 
         <h1 className="text-2xl font-bold text-foreground">Manage Members</h1>
 
