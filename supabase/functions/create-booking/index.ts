@@ -125,9 +125,10 @@ Deno.serve(async (req) => {
       notes: body.notes,
       isBookerConfirmation: true,
       zoomLinks,
+      cancelUrl,
     });
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, cancellation_token: cancellationToken }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
