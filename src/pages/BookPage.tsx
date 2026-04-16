@@ -53,7 +53,10 @@ const BookPage = () => {
           mData.map((m) => ({
             id: m.id,
             name: m.name,
+            role: (m as any).role ?? "",
+            calendarType: ((m as any).calendar_type ?? "google") as "google" | "outlook",
             colorIndex: m.color_index ?? 0,
+            meetingDuration: (m as any).meeting_duration ?? 30,
           })),
         );
       }
@@ -148,10 +151,9 @@ const BookPage = () => {
           />
         )}
 
-        {step === "select-datetime" && selectedMembers.length > 0 && teamId && (
+        {step === "select-datetime" && selectedMembers.length > 0 && (
           <DateTimePicker
             members={selectedMembers}
-            teamId={teamId}
             onSelect={handleDateTimeSelect}
             onBack={() => setStep("select-member")}
           />

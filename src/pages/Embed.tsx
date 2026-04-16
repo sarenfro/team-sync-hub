@@ -28,6 +28,7 @@ const Embed = () => {
             role: m.role ?? "",
             calendarType: m.calendar_type as "google" | "outlook",
             colorIndex: m.color_index,
+            meetingDuration: (m as any).meeting_duration ?? 30,
           })),
         );
       }
