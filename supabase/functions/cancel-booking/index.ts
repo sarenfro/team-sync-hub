@@ -85,7 +85,7 @@ async function sendBrevoEmail(params: {
     to: [{ email: params.toEmail, name: params.toName }],
     subject: params.subject,
     htmlContent: params.htmlContent,
-    sender: { name: "Team Booking", email: "noreply@teambooking.app" },
+    sender: { name: "MBAA EC", email: "mbaa@uw.edu" },
   };
 
   if (params.icsContent) {
