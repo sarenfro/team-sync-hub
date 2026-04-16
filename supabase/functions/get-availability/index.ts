@@ -23,9 +23,6 @@ function generateSlots(durationMins: number): string[] {
   return slots;
 }
 
-function icalEnvKey(memberName: string): string {
-  return `ICAL_${memberName.split(" ")[0].toUpperCase()}`;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -71,21 +68,21 @@ Deno.serve(async (req) => {
     const { data: existingBookings } = await bookingQuery;
     const bookedTimes = new Set((existingBookings || []).map((b) => b.meeting_time));
 
-    let membersToCheck: { name: string }[] = [];
+    let membersToCheck: { name: string; ical_url: string | null }[] = [];
 
     if (memberIds.length > 0) {
-      const { data } = await supabase.from("team_members").select("name").in("id", memberIds);
+      const { data } = await supabase.from("team_members").select("name, ical_url").in("id", memberIds);
       membersToCheck = data ?? [];
     } else {
-      const { data } = await supabase.from("team_members").select("name").eq("is_active", true);
+      const { data } = await supabase.from("team_members").select("name, ical_url").eq("is_active", true);
       membersToCheck = data ?? [];
     }
 
     const busySetsPerMember: Set<string>[] = [];
 
     for (const member of membersToCheck) {
-      const envKey = icalEnvKey(member.name);
-      const icalUrl = Deno.env.get(envKey);
+      // Use ical_url from DB, fall back to env var for legacy support
+      const icalUrl = member.ical_url || Deno.env.get(`ICAL_${member.name.split(" ")[0].toUpperCase()}`);
       if (icalUrl) {
         const busy = await getIcalBusyTimes(icalUrl, date, ALL_TIMES, duration);
         busySetsPerMember.push(new Set(busy));
