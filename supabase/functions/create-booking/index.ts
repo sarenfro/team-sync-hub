@@ -1,8 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface BookingRequest {
@@ -13,7 +13,6 @@ interface BookingRequest {
   meeting_date: string;
   meeting_time: string;
   duration_minutes: number;
-  app_url?: string;
 }
 
 Deno.serve(async (req) => {
@@ -25,16 +24,13 @@ Deno.serve(async (req) => {
     const body: BookingRequest = await req.json();
 
     if (!body.booker_name || !body.booker_email || !body.meeting_date || !body.meeting_time) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     let memberIds: string[] = body.team_member_ids ?? [];
 
@@ -51,10 +47,10 @@ Deno.serve(async (req) => {
     }
 
     if (memberIds.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No team members available" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "No team members available" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { data: memberRows } = await supabase
@@ -63,9 +59,6 @@ Deno.serve(async (req) => {
       .in("id", memberIds);
 
     const members = memberRows ?? [];
-
-    const cancellationToken = crypto.randomUUID();
-    const icsUid = crypto.randomUUID();
 
     const bookingInserts = members.map((m) => ({
       team_member_id: m.id,
@@ -76,18 +69,16 @@ Deno.serve(async (req) => {
       meeting_time: body.meeting_time,
       duration_minutes: body.duration_minutes,
       status: "confirmed",
-      cancellation_token: cancellationToken,
-      ics_uid: icsUid,
     }));
 
     const { error: insertError } = await supabase.from("bookings").insert(bookingInserts);
 
     if (insertError) {
       console.error("Database error:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to save booking" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Failed to save booking" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Build zoom links for all members
@@ -117,8 +108,6 @@ Deno.serve(async (req) => {
 
     // Send confirmation email to the booker
     const memberNames = members.map((m) => m.name.split(" ")[0]).join(" & ");
-    const appUrl = body.app_url || Deno.env.get("APP_URL") || "";
-    const cancelUrl = appUrl ? `${appUrl}/cancel?token=${cancellationToken}` : "";
     await sendIcsEmail({
       toEmail: body.booker_email,
       toName: body.booker_name,
@@ -130,19 +119,18 @@ Deno.serve(async (req) => {
       notes: body.notes,
       isBookerConfirmation: true,
       zoomLinks,
-      cancelUrl,
     });
 
-    return new Response(
-      JSON.stringify({ success: true, cancellation_token: cancellationToken }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("Error:", err);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
 
@@ -157,7 +145,6 @@ async function sendIcsEmail(params: {
   notes?: string;
   isBookerConfirmation?: boolean;
   zoomLinks?: { name: string; url: string }[];
-  cancelUrl?: string;
 }): Promise<void> {
   const brevoApiKey = Deno.env.get("BREVO_API_KEY");
   if (!brevoApiKey) {
@@ -169,22 +156,22 @@ async function sendIcsEmail(params: {
   const icsBase64 = btoa(ics);
 
   const formattedDate = new Date(params.meetingDate + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 
-  const zoomHtml = (params.zoomLinks && params.zoomLinks.length > 0)
-    ? `<p><strong>Zoom:</strong> ${params.zoomLinks.map((z) =>
-        `<a href="${z.url}">${params.zoomLinks!.length > 1 ? `${z.name}'s Zoom` : 'Join via Zoom'}</a>`
-      ).join(" | ")}</p>`
-    : "";
+  const zoomHtml =
+    params.zoomLinks && params.zoomLinks.length > 0
+      ? `<p><strong>Zoom:</strong> ${params.zoomLinks
+          .map((z) => `<a href="${z.url}">${params.zoomLinks!.length > 1 ? `${z.name}'s Zoom` : "Join via Zoom"}</a>`)
+          .join(" | ")}</p>`
+      : "";
 
   const subject = params.isBookerConfirmation
     ? `Your meeting is confirmed — ${formattedDate} at ${params.meetingTime}`
     : `New booking: ${params.bookerName} — ${formattedDate} at ${params.meetingTime}`;
-
-  const cancelHtml = params.cancelUrl
-    ? `<p style="margin-top:16px;font-size:13px;color:#666;">Need to cancel? <a href="${params.cancelUrl}" style="color:#cc0000;">Cancel this meeting</a></p>`
-    : "";
 
   const html = params.isBookerConfirmation
     ? `
@@ -198,7 +185,6 @@ async function sendIcsEmail(params: {
         ${params.notes ? `<p><strong>Notes:</strong> ${params.notes}</p>` : ""}
       </div>
       <p>The .ics file is attached — open it to add this meeting to your calendar.</p>
-      ${cancelHtml}
     `
     : `
       <h2>Hi ${params.toName},</h2>
@@ -326,5 +312,8 @@ function pad(n: number): string {
 }
 
 function formatICSDate(d: Date): string {
-  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  return d
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
 }
