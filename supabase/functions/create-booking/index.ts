@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const members = memberRows ?? [];
 
     const cancellationToken = crypto.randomUUID();
-    const appUrl = Deno.env.get("APP_URL") || body.app_url || "";
+    const appUrl = (Deno.env.get("APP_URL") || body.app_url || "").replace(/\/$/, "");
     const cancelUrl = appUrl ? `${appUrl}/cancel?token=${cancellationToken}` : "";
 
     const bookingInserts = members.map((m) => ({
