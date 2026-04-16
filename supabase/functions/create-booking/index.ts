@@ -13,6 +13,7 @@ interface BookingRequest {
   meeting_date: string;
   meeting_time: string;
   duration_minutes: number;
+  app_url?: string;
 }
 
 Deno.serve(async (req) => {
