@@ -1,8 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 function minsToSlot(totalMins: number): string {
@@ -15,8 +15,8 @@ function minsToSlot(totalMins: number): string {
 
 function generateSlots(durationMins: number): string[] {
   const slots: string[] = [];
-  const startMins = 9 * 60;  // 9:00am
-  const endMins = 17 * 60;   // 5:00pm
+  const startMins = 9 * 60; // 9:00am
+  const endMins = 17 * 60; // 5:00pm
   for (let m = startMins; m + durationMins <= endMins; m += durationMins) {
     slots.push(minsToSlot(m));
   }
@@ -41,20 +41,20 @@ Deno.serve(async (req) => {
 
     const memberIdsParam = url.searchParams.get("member_ids") ?? url.searchParams.get("member_id");
     const memberIds = memberIdsParam
-      ? memberIdsParam.split(",").map((id) => id.trim()).filter(Boolean)
+      ? memberIdsParam
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean)
       : [];
 
     if (!date) {
-      return new Response(
-        JSON.stringify({ error: "date parameter required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "date parameter required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     let bookingQuery = supabase
       .from("bookings")
@@ -74,29 +74,22 @@ Deno.serve(async (req) => {
     let membersToCheck: { name: string }[] = [];
 
     if (memberIds.length > 0) {
-      const { data } = await supabase
-        .from("team_members")
-        .select("name")
-        .in("id", memberIds);
+      const { data } = await supabase.from("team_members").select("name").in("id", memberIds);
       membersToCheck = data ?? [];
     } else {
-      const { data } = await supabase
-        .from("team_members")
-        .select("name")
-        .eq("is_active", true);
+      const { data } = await supabase.from("team_members").select("name").eq("is_active", true);
       membersToCheck = data ?? [];
     }
 
     const busySetsPerMember: Set<string>[] = [];
-    
 
     for (const member of membersToCheck) {
       const envKey = icalEnvKey(member.name);
       const icalUrl = Deno.env.get(envKey);
-        if (icalUrl) {
-          const busy = await getIcalBusyTimes(icalUrl, date, ALL_TIMES, duration);
-          busySetsPerMember.push(new Set(busy));
-        }
+      if (icalUrl) {
+        const busy = await getIcalBusyTimes(icalUrl, date, ALL_TIMES, duration);
+        busySetsPerMember.push(new Set(busy));
+      }
     }
 
     const icalBusyTimes = new Set<string>();
@@ -109,20 +102,25 @@ Deno.serve(async (req) => {
     const allBusy = new Set([...bookedTimes, ...icalBusyTimes]);
     const availableTimes = ALL_TIMES.filter((t) => !allBusy.has(t));
 
-    return new Response(
-      JSON.stringify({ available_times: availableTimes, date }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ available_times: availableTimes, date }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("Error:", err);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
 
-async function getIcalBusyTimes(icalUrl: string, date: string, allTimes: string[], duration: number): Promise<string[]> {
+async function getIcalBusyTimes(
+  icalUrl: string,
+  date: string,
+  allTimes: string[],
+  duration: number,
+): Promise<string[]> {
   try {
     const res = await fetch(icalUrl);
     if (!res.ok) {
@@ -166,16 +164,12 @@ function parseIcalForDate(icalText: string, date: string, allTimes: string[], du
     if (dtstart.localDate === undefined) continue;
 
     const hasRrule = /RRULE:/i.test(block);
-    const matchesDate = hasRrule
-      ? doesRecurOnDate(block, date, dtstart)
-      : dtstart.localDate === date;
+    const matchesDate = hasRrule ? doesRecurOnDate(block, date, dtstart) : dtstart.localDate === date;
 
     if (!matchesDate) continue;
 
     const startMins = (dtstart.localHour ?? 0) * 60 + (dtstart.localMinute ?? 0);
-    const endMins = dtend?.localDate
-      ? (dtend.localHour ?? 0) * 60 + (dtend.localMinute ?? 0)
-      : startMins + 30;
+    const endMins = dtend?.localDate ? (dtend.localHour ?? 0) * 60 + (dtend.localMinute ?? 0) : startMins + 30;
 
     for (const slot of allTimes) {
       const slotMins = slotToMinutes(slot);
@@ -329,9 +323,12 @@ function doesRecurOnDate(block: string, date: string, dtstart: DtValue): boolean
 
   if (freq === "YEARLY") {
     const yearsDiff = targetDate.getUTCFullYear() - startDate.getUTCFullYear();
-    return yearsDiff >= 0 && yearsDiff % interval === 0 &&
+    return (
+      yearsDiff >= 0 &&
+      yearsDiff % interval === 0 &&
       targetDate.getUTCMonth() === startDate.getUTCMonth() &&
-      targetDate.getUTCDate() === startDate.getUTCDate();
+      targetDate.getUTCDate() === startDate.getUTCDate()
+    );
   }
 
   return false;
