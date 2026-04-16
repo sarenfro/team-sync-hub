@@ -17,10 +17,12 @@ CREATE TABLE IF NOT EXISTS public.teams (
 
 ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Allow public read access on teams"
+DROP POLICY IF EXISTS "Allow public read access on teams" ON public.teams;
+CREATE POLICY "Allow public read access on teams"
   ON public.teams FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "Team admins can update their teams"
+DROP POLICY IF EXISTS "Team admins can update their teams" ON public.teams;
+CREATE POLICY "Team admins can update their teams"
   ON public.teams FOR UPDATE
   USING (
     EXISTS (
@@ -29,7 +31,8 @@ CREATE POLICY IF NOT EXISTS "Team admins can update their teams"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Team owners can delete teams"
+DROP POLICY IF EXISTS "Team owners can delete teams" ON public.teams;
+CREATE POLICY "Team owners can delete teams"
   ON public.teams FOR DELETE
   USING (
     EXISTS (
@@ -70,11 +73,14 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Anyone can view profiles"
+DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
+CREATE POLICY "Anyone can view profiles"
   ON public.profiles FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Users can insert their own profile"
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can update their own profile"
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
 
 -- Auto-create profile on signup
@@ -97,7 +103,8 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
-CREATE TRIGGER IF NOT EXISTS update_profiles_updated_at
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
+CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -120,11 +127,14 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
   );
 $$;
 
-CREATE POLICY IF NOT EXISTS "Users can view their own team associations"
+DROP POLICY IF EXISTS "Users can view their own team associations" ON public.team_admins;
+CREATE POLICY "Users can view their own team associations"
   ON public.team_admins FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can insert team associations for themselves"
+DROP POLICY IF EXISTS "Users can insert team associations for themselves" ON public.team_admins;
+CREATE POLICY "Users can insert team associations for themselves"
   ON public.team_admins FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Team owners can manage admins"
+DROP POLICY IF EXISTS "Team owners can manage admins" ON public.team_admins;
+CREATE POLICY "Team owners can manage admins"
   ON public.team_admins FOR DELETE
   USING (
     EXISTS (
@@ -132,7 +142,8 @@ CREATE POLICY IF NOT EXISTS "Team owners can manage admins"
       WHERE ta.team_id = team_admins.team_id AND ta.user_id = auth.uid() AND ta.role = 'owner'
     )
   );
-CREATE POLICY IF NOT EXISTS "Team owners can update admins"
+DROP POLICY IF EXISTS "Team owners can update admins" ON public.team_admins;
+CREATE POLICY "Team owners can update admins"
   ON public.team_admins FOR UPDATE
   USING (
     EXISTS (
@@ -140,7 +151,8 @@ CREATE POLICY IF NOT EXISTS "Team owners can update admins"
       WHERE ta.team_id = team_admins.team_id AND ta.user_id = auth.uid() AND ta.role = 'owner'
     )
   );
-CREATE POLICY IF NOT EXISTS "Users can leave teams"
+DROP POLICY IF EXISTS "Users can leave teams" ON public.team_admins;
+CREATE POLICY "Users can leave teams"
   ON public.team_admins FOR DELETE USING (auth.uid() = user_id);
 
 -- 6. event_types table (new)
@@ -166,18 +178,24 @@ CREATE TABLE IF NOT EXISTS public.event_types (
 
 ALTER TABLE public.event_types ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Anyone can view active event types"
+DROP POLICY IF EXISTS "Anyone can view active event types" ON public.event_types;
+CREATE POLICY "Anyone can view active event types"
   ON public.event_types FOR SELECT USING (is_active = true);
-CREATE POLICY IF NOT EXISTS "Users can view own event types"
+DROP POLICY IF EXISTS "Users can view own event types" ON public.event_types;
+CREATE POLICY "Users can view own event types"
   ON public.event_types FOR SELECT USING (auth.uid() = owner_user_id);
-CREATE POLICY IF NOT EXISTS "Users can insert own event types"
+DROP POLICY IF EXISTS "Users can insert own event types" ON public.event_types;
+CREATE POLICY "Users can insert own event types"
   ON public.event_types FOR INSERT WITH CHECK (auth.uid() = owner_user_id);
-CREATE POLICY IF NOT EXISTS "Users can update own event types"
+DROP POLICY IF EXISTS "Users can update own event types" ON public.event_types;
+CREATE POLICY "Users can update own event types"
   ON public.event_types FOR UPDATE USING (auth.uid() = owner_user_id);
-CREATE POLICY IF NOT EXISTS "Users can delete own event types"
+DROP POLICY IF EXISTS "Users can delete own event types" ON public.event_types;
+CREATE POLICY "Users can delete own event types"
   ON public.event_types FOR DELETE USING (auth.uid() = owner_user_id);
 
-CREATE TRIGGER IF NOT EXISTS update_event_types_updated_at
+DROP TRIGGER IF EXISTS update_event_types_updated_at ON public.event_types;
+CREATE TRIGGER update_event_types_updated_at
   BEFORE UPDATE ON public.event_types
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -200,13 +218,17 @@ CREATE TABLE IF NOT EXISTS public.availability_schedules (
 
 ALTER TABLE public.availability_schedules ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Anyone can view availability for booking"
+DROP POLICY IF EXISTS "Anyone can view availability for booking" ON public.availability_schedules;
+CREATE POLICY "Anyone can view availability for booking"
   ON public.availability_schedules FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Users can insert own availability"
+DROP POLICY IF EXISTS "Users can insert own availability" ON public.availability_schedules;
+CREATE POLICY "Users can insert own availability"
   ON public.availability_schedules FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can update own availability"
+DROP POLICY IF EXISTS "Users can update own availability" ON public.availability_schedules;
+CREATE POLICY "Users can update own availability"
   ON public.availability_schedules FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can delete own availability"
+DROP POLICY IF EXISTS "Users can delete own availability" ON public.availability_schedules;
+CREATE POLICY "Users can delete own availability"
   ON public.availability_schedules FOR DELETE USING (auth.uid() = user_id);
 
 -- 8. availability_overrides table (new)
@@ -223,13 +245,17 @@ CREATE TABLE IF NOT EXISTS public.availability_overrides (
 
 ALTER TABLE public.availability_overrides ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Anyone can view overrides for booking"
+DROP POLICY IF EXISTS "Anyone can view overrides for booking" ON public.availability_overrides;
+CREATE POLICY "Anyone can view overrides for booking"
   ON public.availability_overrides FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Users can insert own overrides"
+DROP POLICY IF EXISTS "Users can insert own overrides" ON public.availability_overrides;
+CREATE POLICY "Users can insert own overrides"
   ON public.availability_overrides FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can update own overrides"
+DROP POLICY IF EXISTS "Users can update own overrides" ON public.availability_overrides;
+CREATE POLICY "Users can update own overrides"
   ON public.availability_overrides FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can delete own overrides"
+DROP POLICY IF EXISTS "Users can delete own overrides" ON public.availability_overrides;
+CREATE POLICY "Users can delete own overrides"
   ON public.availability_overrides FOR DELETE USING (auth.uid() = user_id);
 
 -- 9. google_calendar_tokens table (new)
@@ -250,16 +276,21 @@ ALTER TABLE public.google_calendar_tokens ENABLE ROW LEVEL SECURITY;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_google_calendar_tokens_team_member_unique
   ON public.google_calendar_tokens(team_member_id) WHERE team_member_id IS NOT NULL;
 
-CREATE POLICY IF NOT EXISTS "Users can view own tokens"
+DROP POLICY IF EXISTS "Users can view own tokens" ON public.google_calendar_tokens;
+CREATE POLICY "Users can view own tokens"
   ON public.google_calendar_tokens FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can insert own tokens"
+DROP POLICY IF EXISTS "Users can insert own tokens" ON public.google_calendar_tokens;
+CREATE POLICY "Users can insert own tokens"
   ON public.google_calendar_tokens FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can update own tokens"
+DROP POLICY IF EXISTS "Users can update own tokens" ON public.google_calendar_tokens;
+CREATE POLICY "Users can update own tokens"
   ON public.google_calendar_tokens FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "Users can delete own tokens"
+DROP POLICY IF EXISTS "Users can delete own tokens" ON public.google_calendar_tokens;
+CREATE POLICY "Users can delete own tokens"
   ON public.google_calendar_tokens FOR DELETE USING (auth.uid() = user_id);
 
-CREATE TRIGGER IF NOT EXISTS update_google_calendar_tokens_updated_at
+DROP TRIGGER IF EXISTS update_google_calendar_tokens_updated_at ON public.google_calendar_tokens;
+CREATE TRIGGER update_google_calendar_tokens_updated_at
   BEFORE UPDATE ON public.google_calendar_tokens
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -279,15 +310,19 @@ CREATE TABLE IF NOT EXISTS public.routing_forms (
 
 ALTER TABLE public.routing_forms ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Anyone can view active routing forms"
+DROP POLICY IF EXISTS "Anyone can view active routing forms" ON public.routing_forms;
+CREATE POLICY "Anyone can view active routing forms"
   ON public.routing_forms FOR SELECT USING (is_active = true);
-CREATE POLICY IF NOT EXISTS "Owners can manage routing forms"
+DROP POLICY IF EXISTS "Owners can manage routing forms" ON public.routing_forms;
+CREATE POLICY "Owners can manage routing forms"
   ON public.routing_forms FOR ALL USING (auth.uid() = owner_user_id);
 
-CREATE TRIGGER IF NOT EXISTS update_routing_forms_updated_at
+DROP TRIGGER IF EXISTS update_routing_forms_updated_at ON public.routing_forms;
+CREATE TRIGGER update_routing_forms_updated_at
   BEFORE UPDATE ON public.routing_forms
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- 11. Update bookings RLS for personal booking flow
-CREATE POLICY IF NOT EXISTS "Allow public read on bookings for availability"
+DROP POLICY IF EXISTS "Allow public read on bookings for availability" ON public.bookings;
+CREATE POLICY "Allow public read on bookings for availability"
   ON public.bookings FOR SELECT USING (true);
