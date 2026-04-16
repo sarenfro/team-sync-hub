@@ -44,11 +44,22 @@ function getZoomInfos(members: TeamMember[]): ZoomInfo[] {
     .map((m) => {
       const firstName = m.name.split(" ")[0];
       if (m.zoomMeetingId) {
+        // If a full URL was stored, use it directly
+        if (m.zoomMeetingId.startsWith("http")) {
+          const idMatch = m.zoomMeetingId.match(/\/j\/(\d+)/);
+          const digits = idMatch ? idMatch[1] : "";
+          return {
+            name: firstName,
+            url: m.zoomMeetingId,
+            meetingId: digits ? formatMeetingId(digits) : undefined,
+            passcode: m.zoomPasscode,
+          };
+        }
+        // Otherwise treat as raw meeting ID
         const digits = m.zoomMeetingId.replace(/\D/g, "");
-        const url = `https://washington.zoom.us/j/${digits}${m.zoomPasscode ? `?pwd=${encodeURIComponent(m.zoomPasscode)}` : ""}`;
         return {
           name: firstName,
-          url,
+          url: `https://washington.zoom.us/j/${digits}`,
           meetingId: formatMeetingId(m.zoomMeetingId),
           passcode: m.zoomPasscode,
         };
