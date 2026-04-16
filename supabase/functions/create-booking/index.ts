@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
 
     // Send confirmation email to the booker
     const memberNames = members.map((m) => m.name.split(" ")[0]).join(" & ");
-    const appUrl = body.app_url || Deno.env.get("APP_URL") || "";
+    const appUrl = Deno.env.get("APP_URL") || body.app_url || "";
     const cancelUrl = appUrl ? `${appUrl}/cancel?token=${cancellationToken}` : "";
     await sendIcsEmail({
       toEmail: body.booker_email,
