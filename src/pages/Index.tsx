@@ -103,7 +103,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-6">
-        <BookingHeader teamName="Book a Meeting" />
+        <BookingHeader teamName="Book a Meeting" showHome={step !== "select-member"} onHome={handleReset} />
 
         {/* View toggle tabs */}
         <div className="mt-4 flex justify-center">
