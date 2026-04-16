@@ -236,20 +236,24 @@ const MemberProfile = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Zoom Meeting ID</label>
+              <label className="text-sm font-medium text-foreground">Zoom Join Link</label>
               <Input
                 value={form.zoom_meeting_id}
                 onChange={(e) => setForm({ ...form, zoom_meeting_id: e.target.value })}
-                placeholder="e.g. 123 456 7890"
+                placeholder="https://washington.zoom.us/j/..."
+                className="text-xs font-mono"
               />
+              <p className="text-xs text-muted-foreground">
+                Paste your full Zoom invite link (e.g. from your Zoom personal room or recurring meeting invite). This preserves the correct passcode encoding.
+              </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Zoom Passcode</label>
+              <label className="text-sm font-medium text-foreground">Zoom Passcode <span className="font-normal text-muted-foreground">(optional)</span></label>
               <Input
                 value={form.zoom_passcode}
                 onChange={(e) => setForm({ ...form, zoom_passcode: e.target.value })}
-                placeholder="Passcode"
+                placeholder="Only needed if not in the link above"
               />
             </div>
 
