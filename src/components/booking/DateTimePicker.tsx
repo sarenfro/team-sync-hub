@@ -19,7 +19,7 @@ import type { TeamMember } from "./TeamMemberSelect";
 
 interface DateTimePickerProps {
   members: TeamMember[];
-  onSelect: (date: Date, time: string) => void;
+  onSelect: (date: Date, time: string, duration: number) => void;
   onBack: () => void;
 }
 
@@ -34,6 +34,8 @@ function formatMemberNames(members: TeamMember[]): string {
   return firsts.slice(0, -1).join(", ") + " & " + firsts[firsts.length - 1];
 }
 
+const ALL_DURATIONS = [15, 30, 45, 60];
+
 const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -42,6 +44,8 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
   const [loadingTimes, setLoadingTimes] = useState(false);
 
   const effectiveDuration = Math.max(...members.map((m) => m.meetingDuration));
+  const durationOptions = ALL_DURATIONS.filter((d) => d <= effectiveDuration);
+  const [selectedDuration, setSelectedDuration] = useState(effectiveDuration);
 
   const calendarDays = useMemo(() => {
     const start = startOfMonth(currentMonth);
@@ -68,7 +72,7 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
       const memberIds = members.map((m) => m.id).join(",");
 
       try {
-        const params = new URLSearchParams({ date: dateStr, member_ids: memberIds, duration: String(effectiveDuration) });
+        const params = new URLSearchParams({ date: dateStr, member_ids: memberIds, duration: String(selectedDuration) });
 
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-availability?${params.toString()}`,
@@ -96,12 +100,12 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
     };
 
     fetchAvailability();
-  }, [selectedDate, members]);
+  }, [selectedDate, selectedDuration, members]);
 
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time);
     if (selectedDate) {
-      onSelect(selectedDate, time);
+      onSelect(selectedDate, time, selectedDuration);
     }
   };
 
@@ -136,19 +140,40 @@ const DateTimePicker = ({ members, onSelect, onBack }: DateTimePickerProps) => {
               ))}
             </div>
             <p className="text-sm text-muted-foreground">{memberLabel}</p>
-            <h2 className="text-xl font-bold text-foreground">{effectiveDuration} Minute Meeting</h2>
+            <h2 className="text-xl font-bold text-foreground">{selectedDuration} Minute Meeting</h2>
           </div>
         ) : (
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{memberLabel}</p>
-            <h2 className="text-xl font-bold text-foreground">{effectiveDuration} Minute Meeting</h2>
+            <h2 className="text-xl font-bold text-foreground">{selectedDuration} Minute Meeting</h2>
           </div>
         )}
 
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="inline-flex items-center justify-center h-5 w-5 rounded bg-muted">🕐</span>
-          {effectiveDuration} min
-        </div>
+        {durationOptions.length > 1 ? (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Duration</p>
+            <div className="flex flex-wrap gap-1.5">
+              {durationOptions.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => { setSelectedDuration(d); setSelectedTime(null); }}
+                  className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                    selectedDuration === d
+                      ? "bg-booking-hero text-primary-foreground border-booking-hero"
+                      : "border-border text-muted-foreground hover:text-foreground hover:border-foreground"
+                  }`}
+                >
+                  {d} min
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded bg-muted">🕐</span>
+            {selectedDuration} min
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center justify-center h-5 w-5 rounded bg-muted">📹</span>

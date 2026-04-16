@@ -23,6 +23,7 @@ const BookPage = () => {
   const [bookerEmail, setBookerEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cancellationToken, setCancellationToken] = useState<string | null>(null);
+  const [selectedDuration, setSelectedDuration] = useState(30);
 
   useEffect(() => {
     const load = async () => {
@@ -82,9 +83,10 @@ const BookPage = () => {
 
   const handleConfirmSelection = () => setStep("select-datetime");
 
-  const handleDateTimeSelect = (date: Date, time: string) => {
+  const handleDateTimeSelect = (date: Date, time: string, duration: number) => {
     setSelectedDate(date);
     setSelectedTime(time);
+    setSelectedDuration(duration);
     setStep("enter-details");
   };
 
@@ -102,11 +104,11 @@ const BookPage = () => {
           notes: data2.notes,
           meeting_date: selectedDate!.toISOString().split("T")[0],
           meeting_time: selectedTime!,
-          duration_minutes: 30,
+          duration_minutes: selectedDuration,
           app_url: window.location.origin,
         },
       });
-      setCancellationToken(data?.cancellationToken ?? null);
+      setCancellationToken(data?.cancellation_token ?? null);
       setStep("confirmed");
     } catch (err) {
       console.error("Booking failed:", err);
@@ -117,6 +119,7 @@ const BookPage = () => {
 
   const handleReset = () => {
     setCancellationToken(null);
+    setSelectedDuration(30);
     setStep("select-member");
     setSelectedMembers([]);
     setSelectedDate(null);
@@ -164,6 +167,7 @@ const BookPage = () => {
             members={selectedMembers}
             date={selectedDate}
             time={selectedTime}
+            duration={selectedDuration}
             onSubmit={handleFormSubmit}
             onBack={() => setStep("select-datetime")}
             isSubmitting={isSubmitting}
@@ -178,6 +182,7 @@ const BookPage = () => {
             bookerName={bookerName}
             bookerEmail={bookerEmail}
             cancellationToken={cancellationToken}
+            duration={selectedDuration}
             onReset={handleReset}
           />
         )}

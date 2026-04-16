@@ -12,6 +12,7 @@ interface BookingConfirmationProps {
   bookerName: string;
   bookerEmail: string;
   cancellationToken?: string | null;
+  duration?: number;
   onReset: () => void;
 }
 
@@ -70,14 +71,14 @@ function getZoomInfos(members: TeamMember[]): ZoomInfo[] {
     });
 }
 
-const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onReset }: BookingConfirmationProps) => {
+const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, cancellationToken, duration: durationProp, onReset }: BookingConfirmationProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const meetingDate = format(date, "yyyy-MM-dd");
   const memberLabel = formatMemberNames(members);
   const zoomInfos = getZoomInfos(members);
   const meetingTitle = `Meeting with ${memberLabel}`;
-  const duration = Math.max(...members.map((m) => m.meetingDuration));
+  const duration = durationProp ?? Math.max(...members.map((m) => m.meetingDuration));
 
   const handleDownloadICS = async () => {
     setIsDownloading(true);
@@ -231,9 +232,22 @@ const BookingConfirmation = ({ members, date, time, bookerName, bookerEmail, onR
         </div>
       </div>
 
-      <Button variant="booking-outline" onClick={onReset}>
-        Schedule another meeting
-      </Button>
+      <div className="space-y-3">
+        <Button variant="booking-outline" onClick={onReset}>
+          Schedule another meeting
+        </Button>
+        {cancellationToken && (
+          <p className="text-xs text-muted-foreground">
+            Made a mistake?{" "}
+            <a
+              href={`/cancel?token=${cancellationToken}`}
+              className="text-destructive hover:underline"
+            >
+              Cancel this meeting
+            </a>
+          </p>
+        )}
+      </div>
     </div>
   );
 };

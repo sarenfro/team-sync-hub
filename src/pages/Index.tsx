@@ -19,6 +19,8 @@ const Index = () => {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [bookerName, setBookerName] = useState("");
   const [bookerEmail, setBookerEmail] = useState("");
+  const [selectedDuration, setSelectedDuration] = useState(30);
+  const [cancellationToken, setCancellationToken] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -58,9 +60,10 @@ const Index = () => {
     setStep("select-datetime");
   };
 
-  const handleDateTimeSelect = (date: Date, time: string) => {
+  const handleDateTimeSelect = (date: Date, time: string, duration: number) => {
     setSelectedDate(date);
     setSelectedTime(time);
+    setSelectedDuration(duration);
     setStep("enter-details");
   };
 
@@ -70,8 +73,7 @@ const Index = () => {
     setBookerEmail(data.email);
 
     try {
-      const effectiveDuration = Math.max(...selectedMembers.map((m) => m.meetingDuration));
-      await supabase.functions.invoke("create-booking", {
+      const { data: result } = await supabase.functions.invoke("create-booking", {
         body: {
           team_member_ids: selectedMembers.map((m) => m.id),
           booker_name: data.name,
@@ -79,10 +81,12 @@ const Index = () => {
           notes: data.notes,
           meeting_date: selectedDate!.toISOString().split("T")[0],
           meeting_time: selectedTime!,
-          duration_minutes: effectiveDuration,
+          duration_minutes: selectedDuration,
+          app_url: window.location.origin,
         },
       });
 
+      setCancellationToken(result?.cancellation_token ?? null);
       setStep("confirmed");
     } catch (err) {
       console.error("Booking failed:", err);
@@ -98,6 +102,8 @@ const Index = () => {
     setSelectedTime(null);
     setBookerName("");
     setBookerEmail("");
+    setSelectedDuration(30);
+    setCancellationToken(null);
   };
 
   return (
@@ -159,6 +165,7 @@ const Index = () => {
                   members={selectedMembers}
                   date={selectedDate}
                   time={selectedTime}
+                  duration={selectedDuration}
                   onSubmit={handleFormSubmit}
                   onBack={() => setStep("select-datetime")}
                   isSubmitting={isSubmitting}
@@ -172,6 +179,8 @@ const Index = () => {
                   time={selectedTime}
                   bookerName={bookerName}
                   bookerEmail={bookerEmail}
+                  cancellationToken={cancellationToken}
+                  duration={selectedDuration}
                   onReset={handleReset}
                 />
               )}

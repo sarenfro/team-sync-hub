@@ -10,6 +10,7 @@ interface BookingFormProps {
   members: TeamMember[];
   date: Date;
   time: string;
+  duration?: number;
   onSubmit: (data: { name: string; email: string; notes: string }) => void;
   onBack: () => void;
   isSubmitting: boolean;
@@ -22,7 +23,7 @@ function formatMemberNames(members: TeamMember[]): string {
   return firsts.slice(0, -1).join(", ") + " & " + firsts[firsts.length - 1];
 }
 
-const BookingForm = ({ members, date, time, onSubmit, onBack, isSubmitting }: BookingFormProps) => {
+const BookingForm = ({ members, date, time, duration: durationProp, onSubmit, onBack, isSubmitting }: BookingFormProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
@@ -33,7 +34,7 @@ const BookingForm = ({ members, date, time, onSubmit, onBack, isSubmitting }: Bo
   };
 
   const memberLabel = formatMemberNames(members);
-  const duration = Math.max(...members.map((m) => m.meetingDuration));
+  const duration = durationProp ?? Math.max(...members.map((m) => m.meetingDuration));
 
   return (
     <div
