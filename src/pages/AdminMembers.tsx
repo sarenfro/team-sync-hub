@@ -222,7 +222,7 @@ const AdminMembers = () => {
     const colorIndex = members.length % 4;
     const { data, error } = await supabase
       .from("team_members")
-      .insert({ team_id: teamId, name: newName.trim(), color_index: colorIndex })
+      .insert({ team_id: teamId, name: newName.trim(), color_index: colorIndex, calendar_type: "ical" })
       .select()
       .single();
     if (error) {
