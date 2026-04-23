@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Users } from "lucide-react";
 
 const TIMEZONES = [
   "America/Los_Angeles", "America/Denver", "America/Chicago", "America/New_York",
@@ -25,6 +26,12 @@ const generateSlug = (email: string) => {
   return name;
 };
 
+interface TeamEntry {
+  team_id: string;
+  role: string;
+  team: { name: string; slug: string } | null;
+}
+
 const Onboarding = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +41,18 @@ const Onboarding = () => {
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Los_Angeles");
   const [slugError, setSlugError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [existingTeams, setExistingTeams] = useState<TeamEntry[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("team_admins")
+      .select("team_id, role, team:team_id(name, slug)")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (data) setExistingTeams(data as unknown as TeamEntry[]);
+      });
+  }, [user]);
 
   const handleSubmit = async () => {
     if (!personalSlug.trim()) return;
@@ -131,6 +150,31 @@ const Onboarding = () => {
             {saving ? "Saving..." : "Continue"}
           </Button>
         </div>
+
+        {existingTeams.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex-1 border-t border-border" />
+              <span>or go to an existing team</span>
+              <div className="flex-1 border-t border-border" />
+            </div>
+            <div className="space-y-2">
+              {existingTeams.map((t) => (
+                <Link
+                  key={t.team_id}
+                  to={`/admin/${t.team?.slug}`}
+                  className="flex items-center justify-between rounded-lg border border-border px-4 py-3 hover:border-booking-hero hover:bg-booking-hero-light transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-foreground">{t.team?.name}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground capitalize">{t.role}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

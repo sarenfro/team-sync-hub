@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,9 @@ interface MemberData {
 const MemberProfile = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const teamSlug = searchParams.get("team");
+  const [teamName, setTeamName] = useState<string | null>(null);
   const [allMembers, setAllMembers] = useState<{ id: string; name: string }[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [form, setForm] = useState<MemberData | null>(null);
@@ -32,11 +35,29 @@ const MemberProfile = () => {
     if (authLoading || !user) return;
 
     const load = async () => {
-      // Fetch all team members
-      const { data: members } = await supabase
+      let resolvedTeamId: string | null = null;
+
+      if (teamSlug) {
+        const { data: team } = await supabase
+          .from("teams")
+          .select("id, name")
+          .eq("slug", teamSlug)
+          .maybeSingle();
+        if (team) {
+          resolvedTeamId = team.id;
+          setTeamName(team.name);
+        }
+      }
+
+      // Fetch team members, scoped to team if provided
+      let query = supabase
         .from("team_members")
         .select("id, name, role, email, ical_url, zoom_meeting_id, zoom_passcode, meeting_duration")
         .order("name");
+      if (resolvedTeamId) {
+        query = query.eq("team_id", resolvedTeamId);
+      }
+      const { data: members } = await query;
 
       if (!members) { setLoadingProfile(false); return; }
 
@@ -138,7 +159,9 @@ const MemberProfile = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Update your availability and meeting info for the booking page.
+            {teamName
+              ? `Update your calendar and meeting info for ${teamName}.`
+              : "Update your availability and meeting info for the booking page."}
           </p>
         </div>
 

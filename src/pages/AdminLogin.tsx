@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
@@ -10,21 +10,24 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const teamSlug = searchParams.get("team");
+  const profileUrl = teamSlug ? `/member-profile?team=${teamSlug}` : "/member-profile";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) navigate("/member-profile");
+      if (session?.user) navigate(profileUrl);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) navigate("/member-profile");
+      if (session?.user) navigate(profileUrl);
     });
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, profileUrl]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/member-profile`,
+      redirect_uri: `${window.location.origin}${profileUrl}`,
     });
     if (result.error) {
       toast({ title: "Error", description: String(result.error), variant: "destructive" });

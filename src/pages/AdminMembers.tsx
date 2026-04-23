@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { ChevronLeft, Plus, Trash2, HelpCircle, AlertTriangle, CheckCircle, Loader2, Calendar, Home } from "lucide-react";
+import { ChevronLeft, Plus, Trash2, HelpCircle, AlertTriangle, CheckCircle, Loader2, Calendar, Home, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Popover,
@@ -441,6 +441,34 @@ const AdminMembers = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Member self-service link */}
+        <div className="rounded-xl border border-border bg-muted/30 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium text-foreground">Member Self-Service Link</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Share this link with your team members so they can add their own calendar iCal URL without admin access.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              readOnly
+              value={`${window.location.origin}/admin-login?team=${slug}`}
+              className="text-xs font-mono bg-background"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/admin-login?team=${slug}`);
+                toast.success("Link copied!");
+              }}
+            >
+              Copy
+            </Button>
+          </div>
         </div>
 
         {/* Add member */}
